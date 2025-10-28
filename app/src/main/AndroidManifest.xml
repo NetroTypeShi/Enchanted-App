@@ -12,6 +12,18 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.AlertaCiudadana">
         <activity
+            android:name=".Views.FirstNewActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <activity
+            android:name=".Views.Noticia1Activity"
+            android:exported="false" />
+        <activity
             android:name=".Views.NewsPanelActivity"
             android:exported="false" />
         <activity

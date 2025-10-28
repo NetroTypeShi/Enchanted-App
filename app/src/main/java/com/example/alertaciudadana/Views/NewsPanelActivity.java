@@ -1,5 +1,6 @@
 package com.example.alertaciudadana.Views;
 
+import android.content.Intent;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
@@ -48,6 +49,8 @@ public class NewsPanelActivity extends AppCompatActivity {
                     @Override
                     public void onClick(View v) {
                         // acción del botón "Detalles"
+                        Intent intent = new Intent(NewsPanelActivity.this, FirstNewActivity.class);
+                        startActivity(intent);
                     }
                 });
 
@@ -59,6 +62,7 @@ public class NewsPanelActivity extends AppCompatActivity {
                     @Override
                     public void onClick(View v) {
                         // acción del botón "Detalles"
+
                     }
                 });
 
