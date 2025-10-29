@@ -1,21 +1,32 @@
 package com.example.alertaciudadana.Views;
 
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
+import android.os.Build;
 import android.os.Bundle;
+import android.util.Log;
 import android.util.TypedValue;
 import android.view.View;
 import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.cardview.widget.CardView;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.constraintlayout.widget.ConstraintSet;
+import androidx.core.app.ActivityCompat;
+import androidx.core.app.NotificationCompat;
+import androidx.core.app.NotificationManagerCompat;
+import androidx.core.content.ContextCompat;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
@@ -27,17 +38,84 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class NewsPanelActivity extends AppCompatActivity {
 
+    private static final String TAG = "NewsPanelActivity";
+
     // Controller externo para programar la aparición de la segunda noticia
     private NewsTimerController newsTimerController;
 
     // Anchor shared to chain added cards (starts pointing to textView3)
     private final AtomicInteger anchor = new AtomicInteger(R.id.textView3);
 
+    private static final String CHANNEL_ID = "news_channel_id";
+    private static final int REQ_POST_NOTIF = 1001;
+
+    private void createNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            NotificationChannel channel = new NotificationChannel(
+                    CHANNEL_ID,
+                    "Noticias",
+                    NotificationManager.IMPORTANCE_DEFAULT);
+            channel.setDescription("Canal para notificaciones de noticias");
+            NotificationManager manager = getSystemService(NotificationManager.class);
+            if (manager != null) {
+                manager.createNotificationChannel(channel);
+                Log.d(TAG, "Notification channel creado: " + CHANNEL_ID);
+            } else {
+                Log.w(TAG, "NotificationManager es null, no se puede crear channel");
+            }
+        }
+    }
+
+    private void requestNotificationPermissionIfNeeded() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS)
+                    != PackageManager.PERMISSION_GRANTED) {
+                Log.d(TAG, "Solicitando permiso POST_NOTIFICATIONS");
+                ActivityCompat.requestPermissions(this,
+                        new String[]{android.Manifest.permission.POST_NOTIFICATIONS},
+                        REQ_POST_NOTIF);
+            } else {
+                Log.d(TAG, "Permiso POST_NOTIFICATIONS ya concedido");
+            }
+        }
+    }
+
+    private void showNotificationWithTitle(String title) {
+        Log.d(TAG, "showNotificationWithTitle: " + title);
+
+        // permiso (si no está concedido no intentamos notificar)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS)
+                    != PackageManager.PERMISSION_GRANTED) {
+                Log.w(TAG, "No se ha concedido POST_NOTIFICATIONS -> no se muestra notificación");
+                return;
+            }
+        }
+
+        int smallIcon = R.drawable.logo; // poner la imagen
+
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(NewsPanelActivity.this, CHANNEL_ID)
+                .setSmallIcon(smallIcon)
+                .setContentTitle(title)
+                .setContentText("") // vacío porque solo quieres el título
+                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                .setAutoCancel(true);
+
+        NotificationManagerCompat.from(NewsPanelActivity.this)
+                .notify((int) (System.currentTimeMillis() % Integer.MAX_VALUE), builder.build());
+
+        Log.d(TAG, "Notificación enviada: " + title);
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_news_panel);
+
+        // Crear canal y solicitar permiso (si es necesario)
+        createNotificationChannel();
+        requestNotificationPermissionIfNeeded();
 
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
@@ -68,7 +146,9 @@ public class NewsPanelActivity extends AppCompatActivity {
         newsTimerController = new NewsTimerController(new NewsTimerController.Listener() {
             @Override
             public void onTick() {
-                // Se ejecuta en el hilo principal (handler interno del controller usa Looper.getMainLooper())
+                Log.d(TAG, "onTick() recibido en Activity");
+                runOnUiThread(() -> Toast.makeText(NewsPanelActivity.this, "onTick ejecutado (prueba)", Toast.LENGTH_SHORT).show());
+
                 int id2 = addNewsCard(main, anchor.get(),
                         "Mepicanlococo",
                         "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
@@ -79,11 +159,28 @@ public class NewsPanelActivity extends AppCompatActivity {
                             }
                         });
                 anchor.set(id2);
+
+                // Mostrar notificación con solo el título
+                showNotificationWithTitle("Mepicanlococo");
             }
         });
 
-        // Programar aparición única de la segunda noticia a los 30 segundos (30_000 ms)
+        // Programar aparición única de la segunda noticia a los 5 segundos (prueba)
         newsTimerController.startOneShot(5_000L);
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == REQ_POST_NOTIF) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                Log.d(TAG, "POST_NOTIFICATIONS concedido");
+                Toast.makeText(this, "Permiso de notificaciones concedido", Toast.LENGTH_SHORT).show();
+            } else {
+                Log.w(TAG, "POST_NOTIFICATIONS DENEGADO por el usuario");
+                Toast.makeText(this, "Permiso de notificaciones denegado", Toast.LENGTH_SHORT).show();
+            }
+        }
     }
 
     @Override
