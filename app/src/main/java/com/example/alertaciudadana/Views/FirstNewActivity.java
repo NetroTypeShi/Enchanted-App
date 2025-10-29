@@ -1,6 +1,5 @@
 package com.example.alertaciudadana.Views;
 
-import android.content.Intent;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
@@ -13,6 +12,10 @@ import androidx.core.view.WindowInsetsCompat;
 
 import com.example.alertaciudadana.R;
 
+/**
+ * Al pulsar "home" hacemos finish() para volver a la instancia previa de NewsPanelActivity
+ * y evitar recrearla (con su timer reprogramado).
+ */
 public class FirstNewActivity extends AppCompatActivity {
 
     @Override
@@ -25,16 +28,14 @@ public class FirstNewActivity extends AppCompatActivity {
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
             return insets;
         });
+
         Button homeButton = findViewById(R.id.homebutton);
         homeButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Intent intent = new Intent(FirstNewActivity.this, NewsPanelActivity.class);
-                startActivity(intent);
+                // Volver a la Activity anterior en el stack (preserva su estado)
+                finish();
             }
         });
     }
-
-
-
 }

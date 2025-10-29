@@ -2,8 +2,8 @@ package com.example.alertaciudadana.Views;
 
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
-import android.app.PendingIntent;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.graphics.Typeface;
@@ -36,9 +36,17 @@ import com.example.alertaciudadana.Controller.NewsTimerController;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
+/**
+ * Cambios principales:
+ * - Solo añadimos la tarjeta inicial y programamos el timer si savedInstanceState == null.
+ * - Guardamos/restauramos el anchor en onSaveInstanceState para evitar que al recrear la Activity
+ *   se pierda la referencia a la última tarjeta añadida.
+ * - onResume comprueba SharedPreferences para cualquier noticia pendiente (si usas Service/Worker).
+ */
 public class NewsPanelActivity extends AppCompatActivity {
 
     private static final String TAG = "NewsPanelActivity";
+    private static final String KEY_ANCHOR = "key_anchor";
 
     // Controller externo para programar la aparición de la segunda noticia
     private NewsTimerController newsTimerController;
@@ -92,7 +100,7 @@ public class NewsPanelActivity extends AppCompatActivity {
             }
         }
 
-        int smallIcon = R.drawable.logo; // poner la imagen
+        int smallIcon = R.drawable.logo; // poner la imagen (tu drawable)
 
         NotificationCompat.Builder builder = new NotificationCompat.Builder(NewsPanelActivity.this, CHANNEL_ID)
                 .setSmallIcon(smallIcon)
@@ -113,6 +121,13 @@ public class NewsPanelActivity extends AppCompatActivity {
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_news_panel);
 
+        // Restaurar anchor si la Activity se recreó
+        if (savedInstanceState != null) {
+            int savedAnchor = savedInstanceState.getInt(KEY_ANCHOR, R.id.textView3);
+            anchor.set(savedAnchor);
+            Log.d(TAG, "onCreate: restaurado anchor=" + savedAnchor);
+        }
+
         // Crear canal y solicitar permiso (si es necesario)
         createNotificationChannel();
         requestNotificationPermissionIfNeeded();
@@ -125,48 +140,106 @@ public class NewsPanelActivity extends AppCompatActivity {
 
         ConstraintLayout main = findViewById(R.id.main);
 
-        // ancla inicial: debajo de textView3 (tal y como está en tu XML)
-        anchor.set(R.id.textView3);
+        // Solo la primera vez (savedInstanceState == null) añadimos la tarjeta inicial y programamos el timer.
+        // Si la Activity se recrea (p. ej. rotación) o volvemos desde otra Activity, evitamos duplicados.
+        if (savedInstanceState == null) {
+            // ancla inicial: debajo de textView3 (tal y como está en tu XML)
+            anchor.set(R.id.textView3);
 
-        // Primera tarjeta: actualizamos 'anchor' con el id del card creado
-        int createdId = addNewsCard(main, anchor.get(),
-                "El ayuntamiento de Alfacar detecta sonidos y acontecimientos extraños en el bosque de Alfaguara",
-                "Los cazadores y senderistas han avistado sonidos de animales desconocidos en el bosque y proximidades, los testigos a pesar de buscar, no han encontrado la fuente de los sonidos",
-                new View.OnClickListener() {
-                    @Override
-                    public void onClick(View v) {
-                        // acción del botón "Detalles"
-                        Intent intent = new Intent(NewsPanelActivity.this, FirstNewActivity.class);
-                        startActivity(intent);
-                    }
-                });
-        anchor.set(createdId);
+            // Primera tarjeta: actualizamos 'anchor' con el id del card creado
+            int createdId = addNewsCard(main, anchor.get(),
+                    "El ayuntamiento de Alfacar detecta sonidos y acontecimientos extraños en el bosque de Alfaguara",
+                    "Los cazadores y senderistas han avistado sonidos de animales desconocidos en el bosque y proximidades, los testigos a pesar de buscar, no han encontrado la fuente de los sonidos",
+                    new View.OnClickListener() {
+                        @Override
+                        public void onClick(View v) {
+                            // acción del botón "Detalles" - abrimos FirstNewActivity
+                            Intent intent = new Intent(NewsPanelActivity.this, FirstNewActivity.class);
+                            startActivity(intent);
+                        }
+                    });
+            anchor.set(createdId);
 
-        // Inicializar el controller con un listener sencillo: al tick añadimos la segunda noticia
-        newsTimerController = new NewsTimerController(new NewsTimerController.Listener() {
-            @Override
-            public void onTick() {
-                Log.d(TAG, "onTick() recibido en Activity");
-                runOnUiThread(() -> Toast.makeText(NewsPanelActivity.this, "onTick ejecutado (prueba)", Toast.LENGTH_SHORT).show());
+            // Inicializar el controller con un listener sencillo: al tick añadimos la segunda noticia
+            newsTimerController = new NewsTimerController(new NewsTimerController.Listener() {
+                @Override
+                public void onTick() {
+                    Log.d(TAG, "onTick() recibido en Activity");
+                    runOnUiThread(() -> Toast.makeText(NewsPanelActivity.this, "onTick ejecutado (prueba)", Toast.LENGTH_SHORT).show());
 
-                int id2 = addNewsCard(main, anchor.get(),
-                        "Mepicanlococo",
-                        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-                        new View.OnClickListener() {
-                            @Override
-                            public void onClick(View v) {
-                                // acción del botón "Detalles" para la segunda noticia
-                            }
-                        });
-                anchor.set(id2);
+                    int id2 = addNewsCard(main, anchor.get(),
+                            "Mepicanlococo",
+                            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                            new View.OnClickListener() {
+                                @Override
+                                public void onClick(View v) {
+                                    // acción del botón "Detalles" para la segunda noticia
+                                }
+                            });
+                    anchor.set(id2);
 
-                // Mostrar notificación con solo el título
-                showNotificationWithTitle("Mepicanlococo");
+                    // Mostrar notificación con solo el título
+                    showNotificationWithTitle("Mepicanlococo");
+                }
+            });
+
+            // Programar aparición única de la segunda noticia a los 5 segundos (prueba)
+            newsTimerController.startOneShot(5_000L);
+            Log.d(TAG, "Timer programado (5s)");
+
+            newsTimerController = new NewsTimerController(new NewsTimerController.Listener() {
+                @Override
+                public void onTick() {
+                    Log.d(TAG, "onTick() recibido en Activity");
+                    runOnUiThread(() -> Toast.makeText(NewsPanelActivity.this, "onTick ejecutado (prueba)", Toast.LENGTH_SHORT).show());
+
+                    int id2 = addNewsCard(main, anchor.get(),
+                            "Noticia3",
+                            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                            new View.OnClickListener() {
+                                @Override
+                                public void onClick(View v) {
+                                    // acción del botón "Detalles" para la segunda noticia
+                                }
+                            });
+                    anchor.set(id2);
+
+                    // Mostrar notificación con solo el título
+                    showNotificationWithTitle("Nueva noticia");
+                }
+            });
+
+            // Programar aparición única de la segunda noticia a los 5 segundos (prueba)
+            newsTimerController.startOneShot(10_000L);
+        } else {
+            // Si savedInstanceState != null no reprogramamos timer; aseguramos que el controller no arranque doble.
+            if (newsTimerController == null) {
+                // mantener null: no iniciar timer automáticamente
+                Log.d(TAG, "onCreate: savedInstanceState != null -> no se crea timer");
             }
-        });
+        }
+    }
 
-        // Programar aparición única de la segunda noticia a los 5 segundos (prueba)
-        newsTimerController.startOneShot(5_000L);
+    @Override
+    protected void onResume() {
+        super.onResume();
+
+        // Si usas Service/Worker que dejó una noticia pendiente, añádela aquí.
+        SharedPreferences prefs = getSharedPreferences("news_prefs", MODE_PRIVATE);
+        String pendingTitle = prefs.getString("pending_title", null);
+        if (pendingTitle != null) {
+            prefs.edit().remove("pending_title").apply();
+            ConstraintLayout main = findViewById(R.id.main);
+            int id = addNewsCard(main, anchor.get(), pendingTitle, "", new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    // acción detalles
+                }
+            });
+            anchor.set(id);
+            Toast.makeText(this, "Se añadió noticia pendiente: " + pendingTitle, Toast.LENGTH_SHORT).show();
+            Log.d(TAG, "Se añadió noticia pendiente a la UI: " + pendingTitle);
+        }
     }
 
     @Override
@@ -184,9 +257,17 @@ public class NewsPanelActivity extends AppCompatActivity {
     }
 
     @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        // Guardar el anchor actual (id del último card añadido) para restaurarlo si la Activity se recrea
+        outState.putInt(KEY_ANCHOR, anchor.get());
+        Log.d(TAG, "onSaveInstanceState: guardado anchor=" + anchor.get());
+    }
+
+    @Override
     protected void onDestroy() {
         super.onDestroy();
-        // Cancelar timer para evitar callbacks cuando la Activity ya no existe
+        // Cancelar timer para evitar callbacks cuando la Activity ya no exista
         if (newsTimerController != null) {
             newsTimerController.stop();
             newsTimerController = null;
