@@ -21,8 +21,17 @@ import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
 import com.example.alertaciudadana.R;
+import com.example.alertaciudadana.Controller.NewsTimerController;
+
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class NewsPanelActivity extends AppCompatActivity {
+
+    // Controller externo para programar la aparición de la segunda noticia
+    private NewsTimerController newsTimerController;
+
+    // Anchor shared to chain added cards (starts pointing to textView3)
+    private final AtomicInteger anchor = new AtomicInteger(R.id.textView3);
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -39,10 +48,10 @@ public class NewsPanelActivity extends AppCompatActivity {
         ConstraintLayout main = findViewById(R.id.main);
 
         // ancla inicial: debajo de textView3 (tal y como está en tu XML)
-        int anchor = R.id.textView3;
+        anchor.set(R.id.textView3);
 
         // Primera tarjeta: actualizamos 'anchor' con el id del card creado
-        anchor = addNewsCard(main, anchor,
+        int createdId = addNewsCard(main, anchor.get(),
                 "El ayuntamiento de Alfacar detecta sonidos y acontecimientos extraños en el bosque de Alfaguara",
                 "Los cazadores y senderistas han avistado sonidos de animales desconocidos en el bosque y proximidades, los testigos a pesar de buscar, no han encontrado la fuente de los sonidos",
                 new View.OnClickListener() {
@@ -53,20 +62,38 @@ public class NewsPanelActivity extends AppCompatActivity {
                         startActivity(intent);
                     }
                 });
+        anchor.set(createdId);
 
-        // Segunda tarjeta: se anclará debajo de la anterior porque usamos el anchor devuelto
-        anchor = addNewsCard(main, anchor,
-                "Mepicanlococo",
-                "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-                new View.OnClickListener() {
-                    @Override
-                    public void onClick(View v) {
-                        // acción del botón "Detalles"
+        // Inicializar el controller con un listener sencillo: al tick añadimos la segunda noticia
+        newsTimerController = new NewsTimerController(new NewsTimerController.Listener() {
+            @Override
+            public void onTick() {
+                // Se ejecuta en el hilo principal (handler interno del controller usa Looper.getMainLooper())
+                int id2 = addNewsCard(main, anchor.get(),
+                        "Mepicanlococo",
+                        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                        new View.OnClickListener() {
+                            @Override
+                            public void onClick(View v) {
+                                // acción del botón "Detalles" para la segunda noticia
+                            }
+                        });
+                anchor.set(id2);
+            }
+        });
 
-                    }
-                });
+        // Programar aparición única de la segunda noticia a los 30 segundos (30_000 ms)
+        newsTimerController.startOneShot(5_000L);
+    }
 
-        // Para añadir más tarjetas: repetir anchor = addNewsCard(main, anchor, title, body, listener);
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        // Cancelar timer para evitar callbacks cuando la Activity ya no existe
+        if (newsTimerController != null) {
+            newsTimerController.stop();
+            newsTimerController = null;
+        }
     }
 
     //convertir dp a px
@@ -161,4 +188,5 @@ public class NewsPanelActivity extends AppCompatActivity {
 
         return cardId;
     }
+
 }
