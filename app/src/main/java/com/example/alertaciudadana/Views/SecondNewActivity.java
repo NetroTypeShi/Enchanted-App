@@ -13,7 +13,7 @@ import androidx.core.view.WindowInsetsCompat;
 
 import com.example.alertaciudadana.R;
 
-public class FirstNewActivity extends AppCompatActivity {
+public class SecondNewActivity extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -29,12 +29,9 @@ public class FirstNewActivity extends AppCompatActivity {
         homeButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Intent intent = new Intent(FirstNewActivity.this, NewsPanelActivity.class);
+                Intent intent = new Intent(SecondNewActivity.this, NewsPanelActivity.class);
                 startActivity(intent);
             }
         });
     }
-
-
-
 }

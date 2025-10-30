@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/scrollView"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true"
+    android:background="@android:color/transparent">
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/main"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingTop="8dp"
+        android:paddingBottom="16dp"
+        android:paddingStart="8dp"
+        android:paddingEnd="8dp">
+
+        <!-- Botón home (mantengo tu id existente) -->
+        <Button
+            android:id="@+id/homebutton"
+            android:layout_width="56dp"
+            android:layout_height="56dp"
+            android:background="@drawable/homebutton"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            android:layout_marginTop="12dp"
+            android:layout_marginEnd="12dp" />
+
+        <!-- Logo (mantengo tu id existente) -->
+        <ImageView
+            android:id="@+id/imageView3"
+            android:layout_width="88dp"
+            android:layout_height="84dp"
+            app:srcCompat="@drawable/logo"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            android:layout_marginStart="12dp"
+            android:layout_marginTop="12dp" />
+
+        <!-- Tarjeta principal de noticia -->
+        <androidx.cardview.widget.CardView
+            android:id="@+id/news_card"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            app:cardCornerRadius="14dp"
+            app:cardElevation="6dp"
+            app:cardUseCompatPadding="true"
+            app:layout_constraintTop_toBottomOf="@+id/imageView3"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            android:layout_marginTop="16dp"
+            android:layout_marginStart="12dp"
+            android:layout_marginEnd="12dp"
+            android:background="@android:color/white">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <!-- Título (verde, en negrita, centrado y multilinea) -->
+                <TextView
+                    android:id="@+id/news_title"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="10dp"
+                    android:gravity="center"
+                    android:lineSpacingExtra="2dp"
+                    android:text="Hallados los Restos Mutilados del &quot;Equipo Antivandalismo&quot; Cerca del Cordón"
+                    android:textColor="#017F39"
+                    android:textSize="20sp"
+                    android:textStyle="bold" />
+
+                <!-- Cuerpo de la noticia (negro, normal) -->
+                <TextView
+                    android:id="@+id/news_body"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="12dp"
+                    android:lineSpacingExtra="2dp"
+                    android:text="La esperanza oficial ha muerto de la forma más brutal. A pesar del hermetismo gubernamental, la verdad ha sido forzada por el descubrimiento: Los cuerpos del desaparecido &quot;Equipo de Seguridad y Antivandalismo&quot; han sido encontrados dispersos y horriblemente mutilados en el límite exterior del Perímetro Sanitario.  Las imágenes, aunque censuradas, que han logrado circular en Alerta Ciudadana muestran restos que no parecen haber sido dañados por armas de fuego o explosiones. Los cortes son anómalos, quirúrgicamente precisos y, al mismo tiempo, salvajes. No hay supervivientes ni rastro de lo que perpetró el ataque.  Ante la evidencia de la masacre, el gobierno ha optado por el silencio total. El pánico ha dejado de ser un rumor; ahora es una estampida. La última línea de defensa fue aniquilada, y la población sabe que lo que se llevaron las &quot;sombras&quot; de Alfaguara es la vida misma."
+                    android:textColor="#000000"
+                    android:textSize="14sp" />
+
+                <!-- Imagen de la noticia -->
+                <ImageView
+                    android:id="@+id/news_image"
+                    android:layout_width="match_parent"
+                    android:layout_height="180dp"
+                    android:adjustViewBounds="true"
+                    android:scaleType="centerCrop"
+                    android:src="@drawable/forest"
+                    tools:srcCompat="@drawable/forest" />
+
+            </LinearLayout>
+        </androidx.cardview.widget.CardView>
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+</ScrollView>

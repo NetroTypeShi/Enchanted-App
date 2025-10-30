@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/scrollView"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true"
+    android:background="@android:color/transparent">
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/main"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingTop="8dp"
+        android:paddingBottom="16dp"
+        android:paddingStart="8dp"
+        android:paddingEnd="8dp">
+
+        <!-- Botón home (mantengo tu id existente) -->
+        <Button
+            android:id="@+id/homebutton"
+            android:layout_width="56dp"
+            android:layout_height="56dp"
+            android:background="@drawable/homebutton"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            android:layout_marginTop="12dp"
+            android:layout_marginEnd="12dp" />
+
+        <!-- Logo (mantengo tu id existente) -->
+        <ImageView
+            android:id="@+id/imageView3"
+            android:layout_width="88dp"
+            android:layout_height="84dp"
+            app:srcCompat="@drawable/logo"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            android:layout_marginStart="12dp"
+            android:layout_marginTop="12dp" />
+
+        <!-- Tarjeta principal de noticia -->
+        <androidx.cardview.widget.CardView
+            android:id="@+id/news_card"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            app:cardCornerRadius="14dp"
+            app:cardElevation="6dp"
+            app:cardUseCompatPadding="true"
+            app:layout_constraintTop_toBottomOf="@+id/imageView3"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            android:layout_marginTop="16dp"
+            android:layout_marginStart="12dp"
+            android:layout_marginEnd="12dp"
+            android:background="@android:color/white">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <!-- Título (verde, en negrita, centrado y multilinea) -->
+                <TextView
+                    android:id="@+id/news_title"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="10dp"
+                    android:gravity="center"
+                    android:lineSpacingExtra="2dp"
+                    android:text="Gobierno Desmiente &quot;Bulos Absurdos&quot; y Anuncia la Llegada de &quot;Expertos Antivandalismo&quot; a Alfaguara"
+                    android:textColor="#017F39"
+                    android:textSize="20sp"
+                    android:textStyle="bold" />
+
+                <!-- Cuerpo de la noticia (negro, normal) -->
+                <TextView
+                    android:id="@+id/news_body"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="12dp"
+                    android:lineSpacingExtra="2dp"
+                    android:text="El Gobierno ha convocado una rueda de prensa de urgencia para hacer frente a la &quot;ola de desinformación sin precedentes&quot; que, según afirman, se está propagando mediante aplicaciones y redes sociales.  La Delegación de Gobierno desmiente categóricamente la existencia de cualquier &quot;secta&quot; o &quot;rituales&quot; en el Bosque de Alfaguara. Atribuyen dichos rumores a &quot;montajes y narrativas de ciencia ficción diseñadas para generar pánico&quot; y aseguran que la situación es, y siempre ha sido, un asunto de seguridad pública menor y vandalismo.  Como respuesta, han anunciado la llegada inminente de un contingente de &quot;Expertos de Seguridad y Antivandalismo de Alta Capacitación&quot; para asegurar el Perímetro Sanitario. Estos equipos, afirman, pondrán fin a los incidentes y permitirán &quot;restablecer la normalidad en las próximas 48 horas&quot;. El mensaje es claro: la autoridad está volviendo, y quien difunda el pánico será considerado cómplice de los &quot;vándalos&quot;."
+                    android:textColor="#000000"
+                    android:textSize="14sp" />
+
+                <!-- Imagen de la noticia -->
+                <ImageView
+                    android:id="@+id/news_image"
+                    android:layout_width="match_parent"
+                    android:layout_height="180dp"
+                    android:adjustViewBounds="true"
+                    android:scaleType="centerCrop"
+                    android:src="@drawable/forest"
+                    tools:srcCompat="@drawable/forest" />
+
+            </LinearLayout>
+        </androidx.cardview.widget.CardView>
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+</ScrollView>

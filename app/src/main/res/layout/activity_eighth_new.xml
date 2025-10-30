@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/scrollView"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true"
+    android:background="@android:color/transparent">
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/main"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingTop="8dp"
+        android:paddingBottom="16dp"
+        android:paddingStart="8dp"
+        android:paddingEnd="8dp">
+
+        <!-- Botón home (mantengo tu id existente) -->
+        <Button
+            android:id="@+id/homebutton"
+            android:layout_width="56dp"
+            android:layout_height="56dp"
+            android:background="@drawable/homebutton"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            android:layout_marginTop="12dp"
+            android:layout_marginEnd="12dp" />
+
+        <!-- Logo (mantengo tu id existente) -->
+        <ImageView
+            android:id="@+id/imageView3"
+            android:layout_width="88dp"
+            android:layout_height="84dp"
+            app:srcCompat="@drawable/logo"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            android:layout_marginStart="12dp"
+            android:layout_marginTop="12dp" />
+
+        <!-- Tarjeta principal de noticia -->
+        <androidx.cardview.widget.CardView
+            android:id="@+id/news_card"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            app:cardCornerRadius="14dp"
+            app:cardElevation="6dp"
+            app:cardUseCompatPadding="true"
+            app:layout_constraintTop_toBottomOf="@+id/imageView3"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            android:layout_marginTop="16dp"
+            android:layout_marginStart="12dp"
+            android:layout_marginEnd="12dp"
+            android:background="@android:color/white">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <!-- Título (verde, en negrita, centrado y multilinea) -->
+                <TextView
+                    android:id="@+id/news_title"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="10dp"
+                    android:gravity="center"
+                    android:lineSpacingExtra="2dp"
+                    android:text="Se Reportan Seres Colosales; El Terror Entra en los Hogares"
+                    android:textColor="#017F39"
+                    android:textSize="20sp"
+                    android:textStyle="bold" />
+
+                <!-- Cuerpo de la noticia (negro, normal) -->
+                <TextView
+                    android:id="@+id/news_body"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="12dp"
+                    android:lineSpacingExtra="2dp"
+                    android:text="La orden de &quot;no salir&quot; ha marcado el inicio de la pesadilla definitiva. Los pocos enlaces de comunicación aún activos confirman que la amenaza de Alfaguara no solo se ha extendido, sino que ha escalado en tamaño y brutalidad.  Testigos aterrorizados en los límites de la región han reportado el avistamiento de figuras colosales y deformes, moviéndose lentamente a través de los valles. El terror, sin embargo, se ha vuelto personal.  Durante la noche, el pánico ha sido reemplazado por el horror silencioso. Múltiples reportes vía Alerta Ciudadana (antes de caer) describen cómo las criaturas, con su capacidad de atravesar los sellados, han aparecido en el interior de las viviendas. Al amanecer, los vecinos que se atrevieron a mirar reportaron escenas de una brutalidad inaudita: familias enteras encontradas en sus camas, completamente mutiladas y destripadas, dejando un rastro de vísceras y esa sustancia oscura. La conclusión es clara: la supervivencia es imposible."
+                    android:textColor="#000000"
+                    android:textSize="14sp" />
+
+                <!-- Imagen de la noticia -->
+                <ImageView
+                    android:id="@+id/news_image"
+                    android:layout_width="match_parent"
+                    android:layout_height="180dp"
+                    android:adjustViewBounds="true"
+                    android:scaleType="centerCrop"
+                    android:src="@drawable/forest"
+                    tools:srcCompat="@drawable/forest" />
+
+            </LinearLayout>
+        </androidx.cardview.widget.CardView>
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+</ScrollView>

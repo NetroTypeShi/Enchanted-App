@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/scrollView"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true"
+    android:background="@android:color/transparent">
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/main"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingTop="8dp"
+        android:paddingBottom="16dp"
+        android:paddingStart="8dp"
+        android:paddingEnd="8dp">
+
+        <!-- Botón home (mantengo tu id existente) -->
+        <Button
+            android:id="@+id/homebutton"
+            android:layout_width="56dp"
+            android:layout_height="56dp"
+            android:background="@drawable/homebutton"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            android:layout_marginTop="12dp"
+            android:layout_marginEnd="12dp" />
+
+        <!-- Logo (mantengo tu id existente) -->
+        <ImageView
+            android:id="@+id/imageView3"
+            android:layout_width="88dp"
+            android:layout_height="84dp"
+            app:srcCompat="@drawable/logo"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            android:layout_marginStart="12dp"
+            android:layout_marginTop="12dp" />
+
+        <!-- Tarjeta principal de noticia -->
+        <androidx.cardview.widget.CardView
+            android:id="@+id/news_card"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            app:cardCornerRadius="14dp"
+            app:cardElevation="6dp"
+            app:cardUseCompatPadding="true"
+            app:layout_constraintTop_toBottomOf="@+id/imageView3"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            android:layout_marginTop="16dp"
+            android:layout_marginStart="12dp"
+            android:layout_marginEnd="12dp"
+            android:background="@android:color/white">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <!-- Título (verde, en negrita, centrado y multilinea) -->
+                <TextView
+                    android:id="@+id/news_title"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="10dp"
+                    android:gravity="center"
+                    android:lineSpacingExtra="2dp"
+                    android:text="Gobierno Declara el Colapso: &quot;No Hay Esperanza. Sobrevivan Como Puedan&quot;"
+                    android:textColor="#017F39"
+                    android:textSize="20sp"
+                    android:textStyle="bold" />
+
+                <!-- Cuerpo de la noticia (negro, normal) -->
+                <TextView
+                    android:id="@+id/news_body"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="12dp"
+                    android:lineSpacingExtra="2dp"
+                    android:text="La última luz de la autoridad se ha apagado. Ante la aniquilación de los equipos de contención y la extensión de las figuras grotescas a las áreas residenciales, el Gobierno ha emitido un comunicado final, breve y devastador.  En un mensaje de radio que se cortó a los pocos segundos, una voz apenas audible declaró: &quot;La amenaza ha superado todos los umbrales. La contención ha fallado. No hay esperanza.&quot; La orden de confinamiento fue reemplazada por la admisión de la derrota: &quot;Evacúen la zona de inmediato y por todos los medios. Sobrevivan como puedan.&quot;  Acto seguido, las últimas torres de comunicación en la región cayeron. No hay planes de rescate, no hay zona segura. El gobierno ha abandonado a la población a merced de lo que invocó la secta. La región de Alfaguara ha sido silenciada."
+                    android:textColor="#000000"
+                    android:textSize="14sp" />
+
+                <!-- Imagen de la noticia -->
+                <ImageView
+                    android:id="@+id/news_image"
+                    android:layout_width="match_parent"
+                    android:layout_height="180dp"
+                    android:adjustViewBounds="true"
+                    android:scaleType="centerCrop"
+                    android:src="@drawable/forest"
+                    tools:srcCompat="@drawable/forest" />
+
+            </LinearLayout>
+        </androidx.cardview.widget.CardView>
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+</ScrollView>

@@ -2,8 +2,8 @@ package com.example.alertaciudadana.Views;
 
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.graphics.Typeface;
@@ -17,7 +17,7 @@ import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
-import com.example.alertaciudadana.Controller.NotificationController;
+
 import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.cardview.widget.CardView;
@@ -33,34 +33,18 @@ import androidx.core.view.WindowInsetsCompat;
 
 import com.example.alertaciudadana.R;
 import com.example.alertaciudadana.Controller.NewsTimerController;
-import com.example.alertaciudadana.Controller.NotificationReceiver;
 
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
-
-import java.util.ArrayList;
-import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
-/**
- * NewsPanelActivity modificado para persistir y restaurar noticias desde SharedPreferences (news_list).
- */
 public class NewsPanelActivity extends AppCompatActivity {
 
     private static final String TAG = "NewsPanelActivity";
-    private static final String KEY_ANCHOR = "key_anchor";
-    private static final String PREFS = NotificationReceiver.PREFS;
-    private static final String PREF_NEWS_LIST = NotificationReceiver.PREF_NEWS_LIST;
 
     // Controller externo para programar la aparición de la segunda noticia
     private NewsTimerController newsTimerController;
 
     // Anchor shared to chain added cards (starts pointing to textView3)
     private final AtomicInteger anchor = new AtomicInteger(R.id.textView3);
-
-    // ids de cards añadidos dinámicamente (para poder reconstruir / limpiar)
-    private final List<Integer> dynamicCardIds = new ArrayList<>();
 
     private static final String CHANNEL_ID = "news_channel_id";
     private static final int REQ_POST_NOTIF = 1001;
@@ -108,7 +92,7 @@ public class NewsPanelActivity extends AppCompatActivity {
             }
         }
 
-        int smallIcon = R.drawable.logo; // poner la imagen (tu drawable)
+        int smallIcon = R.drawable.logo; // poner la imagen
 
         NotificationCompat.Builder builder = new NotificationCompat.Builder(NewsPanelActivity.this, CHANNEL_ID)
                 .setSmallIcon(smallIcon)
@@ -129,13 +113,6 @@ public class NewsPanelActivity extends AppCompatActivity {
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_news_panel);
 
-        // Restaurar anchor si la Activity se recreó
-        if (savedInstanceState != null) {
-            int savedAnchor = savedInstanceState.getInt(KEY_ANCHOR, R.id.textView3);
-            anchor.set(savedAnchor);
-            Log.d(TAG, "onCreate: restaurado anchor=" + savedAnchor);
-        }
-
         // Crear canal y solicitar permiso (si es necesario)
         createNotificationChannel();
         requestNotificationPermissionIfNeeded();
@@ -148,193 +125,284 @@ public class NewsPanelActivity extends AppCompatActivity {
 
         ConstraintLayout main = findViewById(R.id.main);
 
-        // Cargar noticias guardadas anteriormente (si las hay) antes de añadir la noticia estática
-        loadSavedNews(main);
+        // ancla inicial: debajo de textView3 (tal y como está en tu XML)
+        anchor.set(R.id.textView3);
 
-        // Solo la primera vez (savedInstanceState == null) añadimos la tarjeta inicial y programamos el timer.
-        // Si la Activity se recrea (p. ej. rotación) o volvemos desde otra Activity, evitamos duplicados.
-        if (savedInstanceState == null) {
-            // ancla inicial: debajo de textView3 (tal y como está en tu XML)
-            anchor.set(R.id.textView3);
+        // Primera tarjeta: actualizamos 'anchor' con el id del card creado
+        int createdId = addNewsCard(main, anchor.get(),
+                "El ayuntamiento de Alfacar detecta sonidos y acontecimientos extraños en el bosque de Alfaguara",
+                "Los cazadores y senderistas han avistado sonidos de animales desconocidos en el bosque y proximidades, los testigos a pesar de buscar, no han encontrado la fuente de los sonidos",
+                new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        // acción del botón "Detalles"
+                        Intent intent = new Intent(NewsPanelActivity.this, FirstNewActivity.class);
+                        startActivity(intent);
+                    }
+                });
+        anchor.set(createdId);
 
-            // Añadir la tarjeta inicial solo si no está ya en la lista persistente (evita duplicados)
-            String initialTitle = "El ayuntamiento de Alfacar detecta sonidos y acontecimientos extraños en el bosque de Alfaguara";
-            if (!containsNewsWithTitle(initialTitle)) {
-                int createdId = addNewsCard(main, anchor.get(),
-                        initialTitle,
-                        "Los cazadores y senderistas han avistado sonidos de animales desconocidos en el bosque y proximidades, los testigos a pesar de buscar, no han encontrado la fuente de los sonidos",
+        // Inicializar el controller con un listener sencillo: al tick añadimos la segunda noticia
+        newsTimerController = new NewsTimerController(new NewsTimerController.Listener() {
+            @Override
+            public void onTick() {
+                Log.d(TAG, "onTick() recibido en Activity");
+                runOnUiThread(() -> Toast.makeText(NewsPanelActivity.this, "onTick ejecutado (prueba)", Toast.LENGTH_SHORT).show());
+
+                int id2 = addNewsCard(main, anchor.get(),
+                        "Han avistado sombras supuestamente de personas deformes en el bosque de alfaguara",
+                        "Las autoridades locales han emitido un comunicado instando a la calma tras los inquietantes reportes sobre las misteriosas sombras avistadas en el bosque de Alfaguara... ",
                         new View.OnClickListener() {
                             @Override
                             public void onClick(View v) {
-                                // acción del botón "Detalles" - abrimos FirstNewActivity
-                                Intent intent = new Intent(NewsPanelActivity.this, FirstNewActivity.class);
+                                Intent intent = new Intent(NewsPanelActivity.this, SecondNewActivity.class);
                                 startActivity(intent);
                             }
                         });
-                anchor.set(createdId);
-            } else {
-                // si ya existía, actualizamos anchor al último elemento cargado por loadSavedNews
-                // (loadSavedNews actualiza anchor con el último id añadido)
+                anchor.set(id2);
+
+                // Mostrar notificación con solo el título
+                showNotificationWithTitle("Nuevo aviso del bosque de Alfaguara");
             }
+        });
 
-            // Inicializar el controller con un listener sencillo: al tick añadimos la segunda noticia
-            newsTimerController = new NewsTimerController(new NewsTimerController.Listener() {
-                @Override
-                public void onTick() {
-                    Log.d(TAG, "onTick() recibido en Activity");
-                    runOnUiThread(() -> Toast.makeText(NewsPanelActivity.this, "onTick ejecutado (prueba)", Toast.LENGTH_SHORT).show());
+        // Programar aparición única de la segunda noticia a los 5 segundos (prueba)
+        newsTimerController.startOneShot(10_000L);
 
-                    String title = "Mepicanlococo";
-                    String body = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+        newsTimerController = new NewsTimerController(new NewsTimerController.Listener() {
+            @Override
+            public void onTick() {
+                Log.d(TAG, "onTick() recibido en Activity");
+                runOnUiThread(() -> Toast.makeText(NewsPanelActivity.this, "onTick ejecutado (prueba)", Toast.LENGTH_SHORT).show());
 
-                    int id2 = addNewsCard(main, anchor.get(), title, body, new View.OnClickListener() {
-                        @Override
-                        public void onClick(View v) {
-                            // acción del botón "Detalles" para la segunda noticia
-                            Intent i = new Intent(NewsPanelActivity.this, FirstNewActivity.class);
-                            startActivity(i);
-                        }
-                    });
-                    anchor.set(id2);
-
-                    // Persistir en la lista para que sobreviva al cierre
-                    NotificationReceiver.appendNewsToStorage(NewsPanelActivity.this, title, body, "FirstNewActivity");
-
-                    // Mostrar notificación con solo el título (si se concede permiso)
-                    showNotificationWithTitle(title);
-                }
-            });
-
-            // Programar aparición única de la segunda noticia a los 5 segundos (prueba)
-            newsTimerController.startOneShot(5_000L);
-            // También programamos el broadcast para que la notificación se lance aunque la app esté cerrada
-            NotificationController.scheduleOneShot(this, 5_000L, "Mepicanlococo", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "FirstNewActivity");
-            Log.d(TAG, "Timer programado (5s)");
-
-            newsTimerController = new NewsTimerController(new NewsTimerController.Listener() {
-                @Override
-                public void onTick() {
-                    Log.d(TAG, "onTick() recibido en Activity");
-                    runOnUiThread(() -> Toast.makeText(NewsPanelActivity.this, "onTick ejecutado (prueba)", Toast.LENGTH_SHORT).show());
-
-                    String title = "Noticia3";
-                    String body = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
-
-                    int id2 = addNewsCard(main, anchor.get(), title, body, new View.OnClickListener() {
-                        @Override
-                        public void onClick(View v) {
-                            // acción del botón "Detalles" para la tercera noticia
-                            Intent i = new Intent(NewsPanelActivity.this, FirstNewActivity.class);
-                            startActivity(i);
-                        }
-                    });
-                    anchor.set(id2);
-
-                    // Persistir
-                    NotificationReceiver.appendNewsToStorage(NewsPanelActivity.this, title, body, "FirstNewActivity");
-
-                    // Mostrar notificación
-                    showNotificationWithTitle("Nueva noticia");
-                }
-            });
-
-            // Programar aparición única de la tercera noticia a los 10 segundos (prueba)
-            newsTimerController.startOneShot(10_000L);
-            // También programamos el broadcast para que la notificación se lance aunque la app esté cerrada
-            NotificationController.scheduleOneShot(this, 10_000L, "Nueva noticia", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "FirstNewActivity");
-        } else {
-            // Si savedInstanceState != null no reprogramamos timer; aseguramos que el controller no arranque doble.
-            if (newsTimerController == null) {
-                // mantener null: no iniciar timer automáticamente
-                Log.d(TAG, "onCreate: savedInstanceState != null -> no se crea timer");
-            }
-        }
-    }
-
-    @Override
-    protected void onResume() {
-        super.onResume();
-
-        // Al reanudar, refrescamos la UI con la lista persistente (si hubo nuevas entradas mientras la app estaba cerrada)
-        ConstraintLayout main = findViewById(R.id.main);
-        loadSavedNews(main);
-    }
-
-    /**
-     * Carga news_list desde SharedPreferences y reconstruye las tarjetas dinámicas.
-     * Limpia previamente las tarjetas dinámicas mostradas.
-     */
-    private void loadSavedNews(ConstraintLayout main) {
-        // Limpiar tarjetas dinámicas existentes
-        for (Integer id : new ArrayList<>(dynamicCardIds)) {
-            View v = findViewById(id);
-            if (v != null) {
-                main.removeView(v);
-            }
-        }
-        dynamicCardIds.clear();
-        // Reset anchor to initial textView3 so cards append below it
-        anchor.set(R.id.textView3);
-
-        SharedPreferences prefs = getSharedPreferences(PREFS, MODE_PRIVATE);
-        String listStr = prefs.getString(PREF_NEWS_LIST, "[]");
-        try {
-            JSONArray arr = new JSONArray(listStr);
-            for (int i = 0; i < arr.length(); i++) {
-                JSONObject o = arr.getJSONObject(i);
-                final String t = o.optString("title", "");
-                final String b = o.optString("body", "");
-                final String target = o.optString("target", null);
-
-                // listener que abre la activity target (si coincide)
-                View.OnClickListener detailsListener = new View.OnClickListener() {
-                    @Override
-                    public void onClick(View v) {
-                        try {
-                            if ("FirstNewActivity".equals(target)) {
-                                Intent i = new Intent(NewsPanelActivity.this, FirstNewActivity.class);
-                                startActivity(i);
-                            } else {
-                                // por defecto abrimos FirstNewActivity
-                                Intent i = new Intent(NewsPanelActivity.this, FirstNewActivity.class);
-                                startActivity(i);
+                int id2 = addNewsCard(main, anchor.get(),
+                        "El gobierno llama a la calma tras nuevos avistamientos en el bosque de Alfaguara",
+                        "En las últimas horas, varios residentes de las zonas cercanas al bosque de Alfaguara aseguran haber visto figuras humanas deformes moviéndose entre los árboles al anochecer.",
+                        new View.OnClickListener() {
+                            @Override
+                            public void onClick(View v) {
+                                Intent intent = new Intent(NewsPanelActivity.this, ThirdNewActivity.class);
+                                startActivity(intent);
                             }
-                        } catch (Exception e) {
-                            Toast.makeText(NewsPanelActivity.this, "Acción no disponible", Toast.LENGTH_SHORT).show();
-                            Log.e(TAG, "Error al ejecutar detalle target=" + target, e);
-                        }
-                    }
-                };
+                        });
+                anchor.set(id2);
 
-                int id = addNewsCard(main, anchor.get(), t, b != null ? b : "", detailsListener);
-                // registrar como dinámica
-                dynamicCardIds.add(id);
-                anchor.set(id);
+                // Mostrar notificación con solo el título
+                showNotificationWithTitle("Nuevo aviso del bosque de Alfaguara");
             }
-            Log.d(TAG, "loadSavedNews: loaded " + arr.length() + " items");
-        } catch (JSONException je) {
-            Log.e(TAG, "loadSavedNews JSON error: " + je.getMessage(), je);
-        } catch (Exception e) {
-            Log.e(TAG, "loadSavedNews error: " + e.getMessage(), e);
-        }
+        });
+
+        // Programar aparición única de la segunda noticia a los 5 segundos (prueba)
+        newsTimerController.startOneShot(10_000L);
+
+        newsTimerController = new NewsTimerController(new NewsTimerController.Listener() {
+            @Override
+            public void onTick() {
+                Log.d(TAG, "onTick() recibido en Activity");
+                runOnUiThread(() -> Toast.makeText(NewsPanelActivity.this, "onTick ejecutado (prueba)", Toast.LENGTH_SHORT).show());
+
+                int id2 = addNewsCard(main, anchor.get(),
+                        "El Gobierno Establece un Perímetro de Protección Sanitaria en Alfaguara",
+                        "Ante la proliferación de información no verificada y con el objetivo primordial de proteger la salud y la seguridad pública, el Gobierno de la Nación ha decidido activar la Fase 3 de Contención Preventiva en la zona colindante al Bosque de Alfaguara.",
+                        new View.OnClickListener() {
+                            @Override
+                            public void onClick(View v) {
+                                Intent intent = new Intent(NewsPanelActivity.this, FourthNewActivity.class);
+                                startActivity(intent);
+                            }
+                        });
+                anchor.set(id2);
+
+                // Mostrar notificación con solo el título
+                showNotificationWithTitle("Nuevo aviso del bosque de Alfaguara");
+            }
+        });
+
+        // Programar aparición única de la segunda noticia a los 5 segundos (prueba)
+        newsTimerController.startOneShot(10_000L);
+
+        newsTimerController = new NewsTimerController(new NewsTimerController.Listener() {
+            @Override
+            public void onTick() {
+                Log.d(TAG, "onTick() recibido en Activity");
+                runOnUiThread(() -> Toast.makeText(NewsPanelActivity.this, "onTick ejecutado (prueba)", Toast.LENGTH_SHORT).show());
+
+                int id2 = addNewsCard(main, anchor.get(),
+                        "Gobierno Desmiente \"Bulos Absurdos\" y Anuncia la Llegada de \"Expertos Antivandalismo\" a Alfaguara",
+                        "El Gobierno ha convocado una rueda de prensa de urgencia para hacer frente a la \"ola de desinformación sin precedentes\" que, según afirman, se está propagando mediante aplicaciones y redes sociales.",
+                        new View.OnClickListener() {
+                            @Override
+                            public void onClick(View v) {
+                                Intent intent = new Intent(NewsPanelActivity.this, FifthNewActivity.class);
+                                startActivity(intent);
+                            }
+                        });
+                anchor.set(id2);
+
+                // Mostrar notificación con solo el título
+                showNotificationWithTitle("Nuevo aviso del bosque de Alfaguara");
+            }
+        });
+
+        // Programar aparición única de la segunda noticia a los 5 segundos (prueba)
+        newsTimerController.startOneShot(10_000L);
+
+        newsTimerController = new NewsTimerController(new NewsTimerController.Listener() {
+            @Override
+            public void onTick() {
+                Log.d(TAG, "onTick() recibido en Activity");
+                runOnUiThread(() -> Toast.makeText(NewsPanelActivity.this, "onTick ejecutado (prueba)", Toast.LENGTH_SHORT).show());
+
+                int id2 = addNewsCard(main, anchor.get(),
+                        "Se Pierde el Rastro del \"Equipo Antivandalismo\" a las Pocas Horas de Entrar al Perímetro",
+                        "El intento del gobierno de recuperar la autoridad ha resultado en un fracaso espeluznante. El contingente de \"Expertos de Seguridad y Antivandalismo\", desplegado hace apenas unas horas para \"restablecer la normalidad\", ha dejado de responder a las llamadas.",
+                        new View.OnClickListener() {
+                            @Override
+                            public void onClick(View v) {
+                                Intent intent = new Intent(NewsPanelActivity.this, SixthNewActivity.class);
+                                startActivity(intent);
+                            }
+                        });
+                anchor.set(id2);
+
+                // Mostrar notificación con solo el título
+                showNotificationWithTitle("Nuevo aviso del bosque de Alfaguara");
+            }
+        });
+
+        // Programar aparición única de la segunda noticia a los 5 segundos (prueba)
+        newsTimerController.startOneShot(10_000L);
+
+        newsTimerController = new NewsTimerController(new NewsTimerController.Listener() {
+            @Override
+            public void onTick() {
+                Log.d(TAG, "onTick() recibido en Activity");
+                runOnUiThread(() -> Toast.makeText(NewsPanelActivity.this, "onTick ejecutado (prueba)", Toast.LENGTH_SHORT).show());
+
+                int id2 = addNewsCard(main, anchor.get(),
+                        "Hallados los Restos Mutilados del \"Equipo Antivandalismo\" Cerca del Cordón",
+                        "La esperanza oficial ha muerto de la forma más brutal. A pesar del hermetismo gubernamental, la verdad ha sido forzada por el descubrimiento: Los cuerpos del desaparecido \"Equipo de Seguridad y Antivandalismo\" han sido encontrados dispersos y horriblemente mutilados en el límite exterior del Perímetro Sanitario.",
+                        new View.OnClickListener() {
+                            @Override
+                            public void onClick(View v) {
+                                Intent intent = new Intent(NewsPanelActivity.this, SeventhNewActivity.class);
+                                startActivity(intent);
+                            }
+                        });
+                anchor.set(id2);
+
+                // Mostrar notificación con solo el título
+                showNotificationWithTitle("Nuevo aviso del bosque de Alfaguara");
+            }
+        });
+
+        // Programar aparición única de la segunda noticia a los 5 segundos (prueba)
+        newsTimerController.startOneShot(10_000L);
+
+        newsTimerController = new NewsTimerController(new NewsTimerController.Listener() {
+            @Override
+            public void onTick() {
+                Log.d(TAG, "onTick() recibido en Activity");
+                runOnUiThread(() -> Toast.makeText(NewsPanelActivity.this, "onTick ejecutado (prueba)", Toast.LENGTH_SHORT).show());
+
+                int id2 = addNewsCard(main, anchor.get(),
+                        "¡ÚLTIMA ALERTA OFICIAL! El Gobierno Rompe el Silencio y Ordena: \"No Salgan Bajo Ninguna Circunstancia\"",
+                        "El muro de mentiras ha caído. Ante los macabros hallazgos y el colapso de sus fuerzas de contención, la Delegación de Gobierno ha emitido un comunicado de emergencia de carácter nacional que anula toda declaración previa.",
+                        new View.OnClickListener() {
+                            @Override
+                            public void onClick(View v) {
+                                Intent intent = new Intent(NewsPanelActivity.this, EighthNewActivity.class);
+                                startActivity(intent);
+                            }
+                        });
+                anchor.set(id2);
+
+                // Mostrar notificación con solo el título
+                showNotificationWithTitle("Nuevo aviso del bosque de Alfaguara");
+            }
+        });
+        // Programar aparición única de la segunda noticia a los 5 segundos (prueba)
+        newsTimerController.startOneShot(10_000L);
+
+        newsTimerController = new NewsTimerController(new NewsTimerController.Listener() {
+            @Override
+            public void onTick() {
+                Log.d(TAG, "onTick() recibido en Activity");
+                runOnUiThread(() -> Toast.makeText(NewsPanelActivity.this, "onTick ejecutado (prueba)", Toast.LENGTH_SHORT).show());
+
+                int id2 = addNewsCard(main, anchor.get(),
+                        "El Confinamiento Falla: Se Reportan Seres Colosales; El Terror Entra en los Hogares",
+                        "La orden de \"no salir\" ha marcado el inicio de la pesadilla definitiva. Los pocos enlaces de comunicación aún activos confirman que la amenaza de Alfaguara no solo se ha extendido, sino que ha escalado en tamaño y brutalidad.",
+                        new View.OnClickListener() {
+                            @Override
+                            public void onClick(View v) {
+                                Intent intent = new Intent(NewsPanelActivity.this, NinthActivity.class);
+                                startActivity(intent);
+                            }
+                        });
+                anchor.set(id2);
+
+                // Mostrar notificación con solo el título
+                showNotificationWithTitle("Nuevo aviso del bosque de Alfaguara");
+            }
+        });
+        // Programar aparición única de la segunda noticia a los 5 segundos (prueba)
+        newsTimerController.startOneShot(10_000L);
+
+        newsTimerController = new NewsTimerController(new NewsTimerController.Listener() {
+            @Override
+            public void onTick() {
+                Log.d(TAG, "onTick() recibido en Activity");
+                runOnUiThread(() -> Toast.makeText(NewsPanelActivity.this, "onTick ejecutado (prueba)", Toast.LENGTH_SHORT).show());
+
+                int id2 = addNewsCard(main, anchor.get(),
+                        "Gobierno Declara el Colapso: \"No Hay Esperanza. Sobrevivan Como Puedan\"",
+                        "La última luz de la autoridad se ha apagado. Ante la aniquilación de los equipos de contención y la extensión de las figuras grotescas a las áreas residenciales, el Gobierno ha emitido un comunicado final, breve y devastador.",
+                        new View.OnClickListener() {
+                            @Override
+                            public void onClick(View v) {
+                                Intent intent = new Intent(NewsPanelActivity.this, NinthActivity.class);
+                                startActivity(intent);
+                            }
+                        });
+                anchor.set(id2);
+
+                // Mostrar notificación con solo el título
+                showNotificationWithTitle("Nuevo aviso del bosque de Alfaguara");
+            }
+        });
+        // Programar aparición única de la segunda noticia a los 5 segundos (prueba)
+        newsTimerController.startOneShot(10_000L);
+
+        newsTimerController = new NewsTimerController(new NewsTimerController.Listener() {
+            @Override
+            public void onTick() {
+                Log.d(TAG, "onTick() recibido en Activity");
+                runOnUiThread(() -> Toast.makeText(NewsPanelActivity.this, "onTick ejecutado (prueba)", Toast.LENGTH_SHORT).show());
+
+                int id2 = addNewsCard(main, anchor.get(),
+                        "G̨͚̬̣̣̲̞̣͔̳͐̀ͧͬͤ̌̊̋͒̍͆̄̈̓̌͠͝ͅob̴͍̺̼̰̤̟͈̣̮͉̱͓̜̠̺̃̿͛̾͐ͩ̕͢͠͞ię̣̲̫̙͎͐̍ͥ̾͝_̶̼͎͂́̅̌ͩ̄ͯ͘͢r̞͔͒͘ņ̨̘͔̭̮̰̻̮̺̼͉̗̬̲ͮͪ́̌ͮ̓̌͊ͦͤ̐͒͒̔ͮ͒̈́̃ͭ͟͡͡ǫ̩̺̳̻̦̦̬̞̩͇̖͌͛ͫ̉̿͒̽͒͘͟͜ Ḑ̢͓͡͝ę̛̜̗̙̲̾͆ͤ͌̿͒̐̐̚_͎̰̲͕̙ͥ͌͆ͣ̅̈́̌̀̎ͯ́̕c̤̥̞̈̐̅́̚l̵̡͖͎̦͙̹͉̦͎̄́̈́ͦͪ͜ͅ_̨̬̄ͤͯ̾a̛̝̤̼̝̼͈̮͓̬̩̜̥̳̮ͧ̀̾̀ͯ̍ͧ̃̓ͬͬͦͭ̈́̉ͪ͋̋̄̚͘͟͢͡͡͡͡͡ͅr͎̣͔̥͔ͩ͋ͥ̄̒͠ḁ̴̶̢͈̹̓ͭ̽ͪͤͣ̾͠ ȩ̵̼̬͇͕ͮͧͦ͢_̷̧̙̱͍͈͚̞̗̌̈̐ͫ̈ͦ͆̚͟͡l̥̫͚̤̲̪̞̀͑͂ͪ̊͌̆͊̓͌̈̇̀̾̔̀̐̂ͣ͌̀̚͜ C̸̭̪͉̖͋͂ͪ͊̋̾_̷̴̴̨̟̰̪͚̦͚̔̅ͫ̌͂ͫ͠ọ̧̜̱̹̩͓̭̳̻̀̐̅ͩ̐̀̈̆ͫ͌ͤͨͨ̅͢͞͡l̶̡̛͎͍̬̗̹̖̬̦̝̲̹̼͍͎̮̿ͯ̈́ͯ̉ͧͮ̑̈̑̿ͣ́ͪ̕̚͡͠ͅa͉͍̹̝̼͖̎̿̒͛̌p̷̷̷̸̢̺̟̱̠̪͉̂̾̇͆ͩsö̢̢͎͉͓͓̭̞͔̹̝͓ͤͪͯ̃̅̄ͭͤ̊ͭͩ̿ͬ̂͂͊̂ͧ̈͘͘͜͟͝ͅ:̡͔̯̹͍͍̦̹͈̣̲ͩ͗̑̽́̏͂͑͜_̭͇̭͓͓̂ͥͣ̆̀ͥ̆͝ͅ \"̷̮̺̐ͣ̔͗_̸̸͇̯̲͚͖̀̉͐͗̽͑̈́̓ͅ_̵̷̢͚̟̙̳ͩ͊̾̓͟͝N̶̴̶̵̝̬͚̺̜̘̹̥̠̿͑͋ͩͯ͛́ͧ̓͑ͯ͗́̕͘͠ͅͅo̱̰͇͒̐ͨ̚̕͢ Ḩ̵̠͎̪͈̮̱̤̠̄̓̀̽̎̈́͛ͧͣ̂̏̇ͪ̿̕͝a̷̢̨͙̩̻̻͎̯̭͎̝͑̐ͦ̎͌͐̏͊͑̐̾̃̑͊̇̈́̇̀͛͐͋̕͘͜͢͢͡͝ͅͅy̴̢͔͎̲̰̟̞̘͇͚̞̳̮̯̠̰͋̿̔ͦ͛̾ͮ̅́͋ͭ̇̂͘͟͠͡ͅ E̸̸͔̺͚͚̥̺̤̟̳̫̗͚̮͖̎͒̓̋̇͗́̏̽̈̾̓͂ͮ͊ͮ̃ͪ̀̚͘͟͜͠͞͝s̷̵̶̛̛͎͎̹̮̫̩̣̼̻͓̯̗͉̞͈̿͌ͯ̓ͦͬ̒̂̂ͪ̍ͤͨ̆̅̈́̄̈̍ͦ̆̐̿͟͠p̴̢̗̺̺̫̣̙͇͉̲ͩ̓̿ͮ̈͛͊̇̾̉͂ͫͩͩ͊̈́ͪ̓̃͜͟͡e̡͖̝͖̗̼͎̩̭̦̅͆͗́͋ͭ̾́͘͡_̻͉͇̋̂̇̑ͅr̷̰̜̬͕͖̙̠͓̻̹͍̝ͪ̄̒͒̇̽̈́ͦ̇͗͗̔ͩ̾̉̀ͯ̚͜͡͞ȃ̴̢̡͕͓̮̹̮͙̲̳̝̮̤̘͔̱͓̖͙̝̬ͥͧ̃̍ͣ́ͮ̉̅͐̌̆͒̽̉̂̃́̊͊͌͟͡ņ̷̵̶̛̞̣̠̦̪̗̦̞̜͇̪̬̯͑ͦ́̈͂̏͌ͭͮ̓ͪ̓̄̓ͥ͌̓̅̉͝z̵̢̧̧̛̟̪͉̱̠̲̯̥͓̫̯̈͂ͪ̔̍̇͝͡_̷̨̮̟̭̺ͥ͐ͥ̔̀̄͟͠͞à̲͇̜̖͜_.̫̝͉̗̭̳̤ͧͥͤͤ͗̔ͦ̓͋ͦͫ̊́͟͝ Sͩͭo̗͇̽̏b̢̛̠͒̀̄̑͌̐ͤ̿͊̕r̹̝̃̈́͆ͅ_̷̺̦̬̺͎͓̔̈́̐̒̇ͪ̈̓͆ͦ͋̉e̤̲͎͕̣̮ͤ́͐_̤̥͋̃͌̌ͪ͜͝v̵̨̧̛͎͎̯̫̦̯̙̻̳͔͕ͯ̿ͥͬ̋́ͯ̃ͯ̔̆̓̿ͧ̄̕̚͘͟͜i̴̵̴̶̢̛̬̤̭̯̰̟̻̼̺̖̟͊͒̀̈́̓̌̄̍̅ͭ͂̂̂̋̕͜v̶͉̯̜̪̫̓͐̇̀̄̉̊̓͒̏͌ͯ̔͑ͭ́ͪ͡a͕̦̟͙̬͉͉̺̖̳͙̖ͭ̇ͮ̌ͮ̎́̒̈̏ͬͤ͋ͣ̊ͩͪ͢͢͞͠͝ͅn̴̥͕̫͓͚̅͋̓̃̽̈ͭ̽̊͐́͢͢͝͞͞ Ç̷̶̴̶̣̬͎̭͎̫̲̬̥͕͈̯̍ͭ͗͆̍͌ͧͣ͆͊̆̑ͨ͠͞o̵̷̟̥̠͕̜̩͚ͭ͂̾̒ͧ͒̎̌͆̿̀ͨ͒͢ͅ_̜̻m̶̡͍̰͙̞̤̫̼̩̯̗̤̻̉͂̃ͤ̓̆ͮ͗̆ͧ̈́̏͠_̶̼̲̲̉̀ͩͫ̽ͨ͒͌o̴̧̨̦̖̤̞͖̹̭̺͉͚͕̪̍̈́͐̇̒̏́͜ P͖̗͂̓͡_̸̱͕̠͍̥͙̱̋́̿ͥu̴̢̞̖̝͙͓̥͎̞̪̹̫͚̔̂̈́͐̈́̋͋ͧ̂ͮ͐͂̀͛̀͒̈̒̄ͥͦͣ̓̕͘̕͟͡͞͡͞ȩ̶̷̶̨̧̜̯̝̤̗͔̻̌ͪͨͬ̒͒̍̂̄͑̍̓̈́͘͠d̸̡̹̪̪̭͕̺͓͎̼͖̳͛ͭ̄̓̇͘͘͢͞ȧ̸̢͔͙̹͍̟̝͍̪̆ͫͫ́͟͝_͙̰̦̭͚̋ͤͩ̅ͬ̑̾͘̚͢n̵̜͗ͫ̑\"̷̧̤̺͙̻͈̱͖͉̱̺͖̞͍͔̮̦̌̂͑ͭ̿ͪ̇ͥ̂̀͛̐̍̆ͩ̿́̂̕͟",
+                        "A͖̩̯͉̯̣ͩ̊͂ͭͥ̾͒͆̓ͩ͜͢͞_̞͂̓ͅb̨̹͉͇͙̿͑ͪ́̓̌͛̎ͪ͗͘s̵̡̨͓̬̝̘̜̠̙̱͍̭͇͊ͪͧͨ̓̓̀͐ͭ̊͜͟͞ͅͅơ̷̺̦̲̭͔͕̠̞̣̺̲ͣ͒ͬ̑ͨ͆̽͂̓̂̚̕̚̚͞ḻ̶̜͓͆̒̌̐ͥ͞_̉̽u͔͉̪̯͇̼ͨ͒͐͛ͣͪ̓̒̚͜͡͡_̶̶̵̛̞͖̹̪̪̳̹͋̃ͦ̇͑̓ͬ́̕͡t͎̜̩͕̳̬̗̉ͩ͒́̂̀̐̒̇͠͝͞ą̶̶̢̘̤̦̝͙̦̘̠̱̩̘̗̠̪̱͖͚͔̗͈̲̤̩̓ͭ͂ͮ͌̈͆̀̂̂ͤ͋͗ͭ͘͢͝ͅm̨͇̞͓̔͂̑ͣ͌ͨͤ̄̾̈ͩ͝ȩ̴̵̨͓̤͍̖̙ͬ̂̐͆̀̍̇̿ͥ͝͝͡n̵̷̡̛͚̯̱̭̱̘̣͕͈̲͓̳͚̲̲͔̄ͮ͆̎ͮ̓̇ͮ̈ͨ͟͝͞t̵͙͕͚̯̺́̈́̀̇̿͋̋ͬ̏͐̅ͤ̅͡ę̦͈̜͇̹̩̲̫̩̒̀̒̃ͪ̔ͯ_̨͉̣̥̫̙͐̑̓̀̓͜͠!̴̷̭̘͔̰̼ͣͧͪ̎̔͆ͤ̅̚͟͡_̟͒ͦ͑ͨ͂̿ Ą̸̸̧̞͓̞͉̣̮͉̰̣̤ͤ̂̏ͭ̑̏ͩͥ̕͡q̴̷̡̖̥̗̜̟̖̠̳̟͐̉͊͗̾͛ͦͪ̉̑̌̓̑͌̃͘͜͟͞u̩͔̫͒͌ͬ̅͢í̛̝̻̓̌̓ t_̵̷̸̡̨̢̛̬͕͇̯̮̠̫̙̲͖̠̫̤̬͉̗̓̇͌͑́ͮͧ͂́́͆̓͗͗ͦ̆ͭ̎̏͘͜͡͡íe̶̢̘̠̣̹͚͉̗̘̝̤̟̭̪͖ͣͫ̌̑̐̾̈ͬ́̑̎̄̾̀ͪ̚̚͜͡ͅne̶̷̢̨̛͚̦͑̍͋̓ͯ͗̓ͩͤ͗̇̄́ͬͯ̕s̶̢̛̖̪̠̞̰̠͈̬͙̰̎̂̈́̂̓ͯͮ̾͗ͥ̒͋͛̃ͦ͑ͥ̓̄͆̋͑ͯ͊͜͞ l̵̬̩͈̪ͣ͑ͬ̑͋ͅͅ_̡͕͕̬̼̘͚̜͓̜̊̀ͮ̀̂ͪ͐͒͒͜͜ą̨̡̜͔̤͎͚̮̱͌ͭ͊̊͛͊͊ͬͨͥ̅͂͒̓ͫ ų̶̡̮̮͔̞́̋ͬ̂̉ͮ̍̃̊̅ͦl̨̧͉̫̭̙͕̩̠̤̀̅̈́̎̈̌̄ͫ̃̿͢͡͡t̨̖͔̞̳̝̪̰̪̋̔ͬͩͭ̒͐ͨ̀̕̚_̴͇̯̺̤̣̣̪ͦͫ̒͑̐ͥ͢͞i̴̷̢̢̧̭͓̜̟̳̳͚̼͚̭̰͉͙̇̉͌̓͗̍ͭͫ̎̓ͭ̊̌́̑̈͗̓̾ͮ̽̃̕͜͝͞͡͠m̧̨̛̱̗̣̱̱͕͈͔̓̿ͯ͂̌̄̿̆̍̏͜͡á̫̜̈̽͝ p̸̴̴̡̭͖̫͇̠̱̠͓͓͎͇̀̃͌̊̊̾͒͒̍̎̍ͣ̊̉ͨͧ͜͜͞͝ͅị̵̷̶̧̛͇̤̯͚͖͉̗͇̳̼̘͎͔̱̲ͯ̃̓̌͗̂ͩ̈ͪ́̇ͣ͠ͅ_̷̥̳̮̲̈́̃͌ȩ̡̩̠̲̝ͫ̌ͧ̋ͯ̔ͮ͘z̶̶͙͓͖͈̘͐ͥ̎̆̇ͧ̔ͥ̍͢ͅ_̶̤̘̳̟̦̟ͮ͗́͂̊ͩ͒́́ͧ͂͟͢͝͝͞a̤̦̝̮̰̿̈ͪ̈́̒ͮ́͜_,̈́͆_̰̲̝̣̪͂̒̇͢͟_͙̦͔͉̼ͯ̓̾ͯ̽ͅ d̷̙̪̪͂̒͊̎̉_̘̝̤̙̻̣̝̹͋́ͥͫ̈́ͮ͒̏͌̋̋̀ͤ͌̚͢ͅi̴̢̟̫͈͙̗͈͓̙̹̦̦̹͂̾̈ͧͨ̔͌͟͜s̟̎͒_̸̘̫̫̣̬̤̙͍̜͕̒̔́ͪͬ͂̽̀̈́ͫ͆ͪ̃ͮͯ̚e̷̤̣͎͎̙͍̘̩̮ͣͩ̅̾͛̈́͒͂̿͂͂̀ͤ̽̍ͥ̕͠͞_̾͒ͦ͆͊͝͝ṇ̃̅͗ͣ́ͧͥ̃͜a̷̡͈̙̘̦̘̮̭̫̯ͫ̽͗̃͋̀̉͝͡͠d̨̢̧̠̙̮̯͔̘̮̗͐̄̓ͯ͊̎̿ͣ̀͘a̷̬̱͕̗̲̲ͤͥͨ̇̇̾̒ͤ̆͊͛ p̵̦̹̍̓̓̂͐ȁr̷͎͓̮̦̥̠̪̿̂̂̎͂ͪ̚͠a̢͍̻̳̬̰͆̐̐̆͋̒̓̚͝_̴̵̷̗͉̱͈͓͔̽́̿͌̎͗ͩ̊ͤ̿̄ͭͥ̋̕͢ e̡͕̹̳͖ͯ̈͋̒ͯ̌̌ͅl̸̡̨͙̟͇̱̯̥̫̖̼͎͍͊͑̍͛̇̈̀͐̂̀ͥ̅͐͊͑̍͒ͮͥͥ̀ͯ͜ c̟͇̝̞͒͌ͦ̊ͦ̕͜ǫ̵̴̶̜̭͎͉̖̮̫̖͍̳̌ͯͥ̾̃͐̔̑̔͂̃͗́͘l_̝̣̭̘̯̜̬͇̿ͣ̌̀̃̈́̌́ͧͬͫͪ̃̈́̉͐ͯ̕͘̚a̸̷̬͙͓͇̟͍̟͈̟̟̱̮̤̪̋̉̓ͪ̂͗ͥͩ̅ͥͪ̆̈̚͟͢͡͝͡p̯͕̮͇͊͌ͮ́͑̀͂̓ͦ̐s̶̛̹̲͇͕̬̪̘̋̏͊ͮ̏͆́̂͒ͩ̋̐͛̇͌͞͞͡ơ̴͉̗͍͊͟_̼̱̯͈͍̩̼ͩ̇ͦ͜͝ f̸ͦï̸̷̢̬̰͇͕̹̀̆̓̿͋͌͂ͪn̶͇̥͍̩̑ͨ̓ͤ͘a̩̙̯̜̮͔̓̀̓̾̈́ͧͫ̉̋̓͌͗̿ͩͮ̿ļ̪̗̥̩̞͖̰̺ͨͭ̆ͧͪͪ̉ͫ͌̕͝͡ d̟̰͇̈́̄̊̽͐̈̓ͪ̅͑ͤͯ͛̎e͈ ĺ̶̡̬̹̗̼̙̪̯̱̙͚̳ͨ͂͋͊ͣͫ͒ͣ̊͑̋͘̚͡͞a̡͙͈̞̬̫͚͍̓ͣͮ̈́̂ͤͦ̋̊̈́ͬ͆ͩ́͜͜͟ lͤ_̶̱̺͔̺̲͔̝̻͇͛̉ͩ̈̇͋̐̿̓̅ͤͣ͌͋̂̄ͫ͟ͅǫ̸̷̧͙͈́͐̔ͩ̈̌͒̇͐ģ̶͙̥͈̟͉̭̜̝ͬ̽̈́̾͂͋͞͞ĩ̴̹̩͍̬̟̝ͦ͠c̵̸̸̵̸̡̛̛̺̝̯̘̭̝̝͉͔̝̪̘̙̫͉̖̆ͣͥ̾ͬ̎͆̉͒̿ͨ̄̿͂̒̕͘̕͜a̵̢̛̭̝̗̻̠̟̎͊͐̔̒̾ͬ̾͊ͧ͊͜ y̯͒͗̿ l̈́̃a̤̥̩̞͈̦͚͆ͮ̌̆͌̊ͨ́͗ͧ̈́ c͑͡_̷̶͍̱̟̠ͫ̅͌̌̌̄ͣ̄_̶͎̺̩̞͔͛ͤ͂͠ͅǫ̴̻̼̗̤̮̲͈̘̃̒̈̐̑̀͊m̢̲͔̩͙͓̜̘͌̿͒̐̀̈͌͠ͅṷ̮̱̯̲̎͒̏́ͣn̳̰̟͔͔͑̃i̷͍̗̼̖͙̼͈ͧ͌̊ͥ̎͂̈̓͒ͯ͢͠ͅͅç̢̢̳͓̹̬̟̮̼̟̩̻̳͍̮̥̖͒ͭͦͯͩ̍͆̀̊̌̐̒̀̈́ͦ̚͢a̺̞̮͇͐̔̈́͊̐̕_̷̶̧̨̛̞̩̠͓͇͇͉͔̫̊̈́̀͒͒̂ͧͥ̈̚ç̶̱̹̜͕̫̠̖̻̤̟̊ͧ̐ͩ̇ͩ̐ͬ̄ͤ̃̃̈́̈́͞ì̶͚͎̞̥̩̱̦̓͊ͫ͘͡ó̸̹͕̫̙̲̩̒̃͑ͩ̀̓ͨ̽ń̡̙̖͍̯̻̝̟̀ͯ̽̊̓̒ͭ̉ͥ̿ͭ̀̃̈͐:̴̶̻̙͔͙̤̮͓̝͈͓͙̠̑́͆̂ͭͫ̏͂̌̄̆͐͑ͪͧ͗̕͜͟͢ u̵̱̯̹̪͈̎͑̿ͧ̐̕͜͠͝ͅn̙͍̖̂̚_̴͈̜̣͓̙̟̲̗̫̗̮̉ͦͦ̈́͌ͭ̽ͬ̾́̍͂͝ͅ m͓ͪͦ̒͒ͥ́ͤ̆̅en̶̴̝͍͍͇̺̞͔̰̈͊̃ͪ̂̋̓̌̊̈́̔͂̿͜͜͝s̴̸̸̡̭͚̮͈̹͈̤̮̞̤̦̤͊ͯ͌̐ͧ̍ͦ̊̎ͥͮ̒̀̌̎̒͂ͧ̿̊̚̚͢_a̴̢̨̲̗͙̥̫̦̓̎̿̍͒̕͠͡ͅ_̴̖͓̳̦̱̅̈̍͛̂͝͞j̷̟̱̣ͪ̈̋̑̓̇̕͟͠ͅe̵̛̩̝̩̩͔̯͓̥͓͇̱̺̪̍́̅̏ͫͭ́̇͐͘͢͟͟ ċ̘͍̿ͪ̇ͦ͆͐ǫ̶̵͎͔̳̯̮͕͓̜͛͒̏͐ͮ͊͌ͧ̆͐̈́͘r̢̝̯̭͚ͧͪ͆͊͊ͭ͋̾̊́͐r̶̸̨̯̹͉̰̤̗̼͓̰̙̬̥̔ͤ̂ͩͦ̊͐ͫ̂͐́͆̆ͤ͛̀ͥͩ́̕͠͝u̸_̢̡̘̳̩̘̟̜͓ͪ̒̅̈̓͌̉̋ͅ_̳̼͍͛ͫ͊ͅp̷̴̧̟̠̫̙̟͕̦̳̥̼͓̟̜̝͇͖͔̤̀̅̀ͦ̐ͩ̓ͫ̽͐̓̉́ͩ͛ͧ͌̌ͧ͡͠t̰̼͖̪̱̣̫̩̆͂͂̋ͤ̅̊̓ͧͬͦ̕ͅo̡̢̧͕̱͍͚̘̥̼͎͛̎̒͂̾͆̋ͩ̍͆̓ͦ͊̔ͅ ȳ̶̷̛͈̬͕͎͇̱̲̺̬͖͆͑ͭ̄̀̽̄ͮͫͭ̚͞ c̡̨̮̦̞̣̘̤̠͉͇ͯͦ̅͊́̎̒̒̾́͢͢_̢̼̗͚͔̩͕͖̠͓̃ͨ̋̽̈̈́̅̌ͦ̀̑̅̚r͖̩͕̳̜͂̚̚ͅí̵̩̣̯̮͇͕̥́ͤ̽̅ͯͦ͜p̘̖͉͈͉̤̃̊ẗ̴̷̶̴̢͚̟̙͇͈̝̱̝͖̳̣͔͉̣̫̼̪́͗̃ͪͮͨ̈́̇̅͑͗̀̾̃ͬ̾̋͋̃̅ͣ̈͜͝i̢̛̛̠̦̮̮̥̙̳͉͔̘̦͕̰͍̥̥̞̳ͬ́ͮ̀ͬͦͩ̍͂͋͐̓̈́̌͊̚̕͟͞͞c̯ͮ͢o̬̭̟̪̭͂̇ͥ̊_̙ͣ_̛̹̠͓̠͍̣̟̬̟̙̝̒ͬͣͯ̋͒̅͡ ê̬͍̘͊͑ͭ͞ͅǹ̷̰̲̳̤̞̟̈ͣ̂̆ͧ̓̐̍̉̐_̴̛̖̮̤̍̏͜͞ ù̴̢͈͚̼̭̯̭̘̩̼̔̅ͪ̓̃_̷̷̶̵̛̮̞̳̥͉̝ͯ̆̀͆̌ͯ͘͜ņ̛̼͕ͣ̓̆͑͌ͬ̍̀ͨͦ̉̕a̶̧̻̠̮͔̻̟̻̞̥͕̳͆͐̓͋̂̋̓ͥͤ̋́ͦͣ̂̑͗̃͘͢͢͞͝ s̷͔̰̳̹͙̫ͬͫ̋͐̋͛̍ͬ̅ͬo̵̶̷̢̢̫̭̤̣̯̽̏̅̉ͫͫ́͆̈́͐͞_̟̼͖̞͉ͦ̓̀ͬ͋͠͝͞l̢̎̌͢͡ả̶̡̤̮͕̹̗͇̠̦͎̎ͦ͋͒͌̚ l̶̶̢̢͕͖͔͆́́̒̑ͣ͑ͩ̂̈͗ͅí̷̸̴̹͎̯̩ͧͭ͗͗̿͞͡n̸̻̬̳̈̉̊̽́ͬ̎ẹ̷̢̧͇͚̲͖̫̺̦̳̙̣̤͎̰̱͓̗̽͐̂͌̒ͤͨ̋͆̀̏̌͠a̰̦͉̱͛ͮ͒͂͘ q̵̡̢̛̛̗͕̳̥̗̜́̎̿ͩͭ̾̔́͒͟͞͠͠͞͝_̨̺͚̱̞ͯ̂͆̀͐̏͞ͅͅṳ̸̷̡̻̰̥̟̃̓ͣͥͭ̓̇_̸̡͍͚͙͚͉̮̩̯̞̙ͥͨ̍̿ͨ̇ͯ͑ͬ̓͐̈ͤ̕͢͝ė͉̤͙͋ͥ̽ͧ̃̄̓̐́̑͜͢ ṡ̴̴̛̼͓̙͎̺̳͔̙̹͇̪̙̏ͬ̈̓ͯͨ̃̆̍̏ͩ̄́̀̑́͜͢͢͠͝͠ữ̶̡̪̲̥̯͈̱̗̰̻̉̇ͮ̈̊̆̒̈́̈́͋͗̅̀̍͛͟͠͞͡ͅg̶̘̪̻͗͑i̵̶̢̡̧̺̬̞̯͈̤ͣ͛ͯͯ͛̒͌ͩ̿̎̈ͬ͌͘͢͜_̶̸̹̟̦̫̜̟̩̽͌̈́ͨͤ̓͝͞ề̴̷̸̯̱̟̳̹͉̭͗̆͌̊͡͝r̭̰͟è̢͍͇͍̜̪̙̘̼͖̞͈̮̮̮͎̙̍̄͆̓ͧͧ͒ q̴̨̥̈̐̚͟_̶̧̖̮̥͖͓̼̝ͨͭ̊̍͐̋̄ͥ͛͊̍ͣ͗̕͡͡ų̶̷̶̳̼̺͍͎̙̩͇̭̎̀̓̾͊ͯ̉ͅe̢̟̥͉̬͚̗̣͇͓̤ͦͬ́͊̑̅ͮ̎̄͌̌̌̄͞ ļ̸̴̸̡̛̛̹̘̖̠͇̝͖̫͕̩͔͚͉͑͒ͬ̿ͨ͆́̄̈ͦ̅̅̅͟͜͠a̷̪̙̮̗̩͚̹̫͔ͩ͊̄ͨ̀̌̓͌̂͢͜͝ p̳̘͍̆ͧ͛́̈ͭͭ͛ͯ̔̅͐̚͟_̞̒̈̚ṙ̖̟̜̩̙̟̺̻͚̑̇ͪ̓̽̏ͥơ̶̵̴̴̛̜̼̻͙̘̳̮̟̠̦̻̭͕̭̇͑̑̓̈͛ͧ͌̅̑̿ͫ͗̀͐̌̌͊̄̌ͣͫ͋ͬ̏͜͢p̥̤͓̋̑ͭ̋ͬ̓͘ͅi̶̡̺͚͈̺͕̠͈̺̣͋ͮ͆̉ͧͩͦͥ̓̕̕͟͜a̴̶̝̩̫̟̬̼̍̐ͪ́͐̽ͣ́̾̿̎̑̈͘͡ i̬̫̟n̷̿̓f̴̛͔̭̘̥̼̱̲̥̯̟̞̘̠̗̼͈͚̿ͦ̾̅̎ͣ̀̓̀̓̈̀ͤ̽ͬ̃͑̚͘͟͝͡͠͡͡͞ṙ̴̌̇̂͐̿a̺̟̟̥̰̦̩ͮ͌ͦͭ̀̋̄́ͭ̍̾͛͘͜͞ͅȩ̵̸̴̢̛̝̹̺̫̞̼̦̦̻͓̳̗̲̗͖̜̟̻̩̙͈͇ͩ̿͗ͭ̅ͯ̉̐̅͒̏́̓͘͢͢͡s̶̡̡̛̺̪̯̣͕̦̭͚̥͗́ͬ̀ͩͦ̚ͅt̡͎̣̠͎̖̯͚̅̏ͪͨͬ̐ͩͬ̃̿͋̍̚̚̚͘͜r̗̘̩̮͓͕͔̈̊̍̈́ͧ͟͞͝_̴̡̨̧̠͚̩̬̲͚͓̝͌͑̈́̏ͯ̈ͯͨ̀ͩ̊ͯ͊ͮ͢͠͞͠͠ū͎͉͖͖̹͙̑ͥ̑ͯ̅ͮ͊͗c̢̛͈͍͈̘͍͈͉̞̩̰̹̼̾̋ͯ͑͐̂͊̎ͮͭ̔͗ͥ̿̑͌̃ͫ̓̃̕͢͟͢͟͠͠ͅ_̗͕ͦ̉tͦű̌͢_̵̸̡̨̦̦͇̣̜͇̳͈ͫ̄̄͋͗̈́͒̌́̒ͭͩ̕͢͢͠ͅr͉̞̀ä̢̢̡̤͈̻̝̮͇̳̱̌̌͆̄̉ͯ͢_̧̘͉̙̥̗̮͋͒̀ͯͮ̽͌̓ͩ͢ h̷̵̢̧̧̟̮̮̬̙̭̻̙͈ͣ͂͛̏ͤ̂ͪ̏̽̔͊ͬ̄̀ͪͫ́̄̚͟ͅã̴̧̡͎̞̝̠̣̥̥͇̳̤͚̪͔̍̿̅̏͋̈ͫ̔̈ͥ͗̈́͋̀̍̎̾̚͡ͅ ş̻͎͟i̸̡̢̱͍͕̝̺̬͆́ͦ͗̐_̵̬͚̩̹̎́̾̏̊ͬͪͭ̚_̛̘̗͇͓̮͓͕͇̂͐̉ͭ̂̕̚͟d̷̶̶̡͓̮̳̥̟̪̮̳̪̟͉͗͌ͫͮͣ́̇ͥ͋̈̓̇̇ͮ̿̕͜ỏ̧͉͍͙͓̯͐̈́̆̀̅ d̡̛̩̝̻̘̃̓ͫ͂̓͗͊̑̇̚͜͡į̸̴̧̢̳̱͍͕̼͎͉̫̣͕̹̟͇͍̥̮͋̆̅ͧ͑̆̃͑̏̀͂̌̓ͣͤ̚͞ş̵̷̨̧͈̟̠̯̺̖̤̺̖̓̈́͂ͨ̋̌̌̒͋̑̓͋ͥ͛̓̏̊͌̓̋̓ͧ̓̍̇͘̕͜ͅt̳̂o͛r̴̢̢̢̼̜̺̬̠̳͖̪̺̘̬͉͙̟̳̲̊̅̒̂̃͂̊̓̑ͪ͊ͥ̀ͦ̂̕͘ͅs̢̖͝i̸̷̶̢̥̺͎͎̱͎͗̈́̓ͧ̈͆̔̊̉̐̎̃ͫ̉̌̎͒ͬ͐̂̚͟͡͡͡͡o̴̴̴̶̡͉̫͉̩̙͌̇ͧ͘͟͞ń̶̴̷̡͔̗͇̝̗̰̹͍̙͙͕̳͛͑ͬ͒̀̽ͪ̍̏̍̏̑ͯͭͨ̎ͩ̇͆͟͡͡a͉̻̪̝̹̬ͭ̈̎͛͐̀͊̑̀̈͋̔̏̾̚͟d̦̱͎́́̃ͣ̾͢ͅa̜͔̒ͬ͑͢͢_̶̛̣͖̦̫̝͍̗̠̰̝̯ͪ͌̌̽ͧͤ̿̽͌ͦͭ̀̔̚͞_ p̸̷̢̥͇̪͔̹̮ͧ̀ͪ́ͪ͗ͅ_̵̴̬̱͕̃̇͗́̓̋̌͋ͩ̉̿͊͢o̵̡̧̨̬̞̮̟̜̺̖͈͍͓̬̪͎̭͖̝ͯ͊̈́̊͂͊ͯ̽̿ͣͦ͂ͭ̿̿̌ͧ̉́̈́̕͜͟͞͞r̭̻̓́̄̾ͤ̽͘͜ l_̶̵̡̝̗͓̘̥͕̰̗͇̣̼̦̟̼̭͎͚̣̝̘͔̻̟̑̓͊́̿ͣ͑͊ͦͫ͗͛̍̃́͊̚̕͘̚ă̻̺͆͢ ą̸̧͔̳̮̺̰̠̼̮͍͎͈͓͓̯͔̻̿̏ͨ̇͌̎̀̃̽̔ͣͬ̆̉͋̍̈́̍̒͢͠͡ͅm̷̸̵̡̧̟̙̦͎̠̺̳̹̼̗͉̜͉̠͖͖̾̋̂̌̈́̊̊̀̄ͩ́͒̑̋̈ͧ̕͘͜͢͝ͅen̸̵̵̢̘̮̙͕̬͔͓͍̽̂̃̓ͧͨͥ͂ͩ̿͆̋̒̉̐͡ã̷̷̧͔͙̰͕̰̖̺̬̝̩̬̪̱̱ͣ́́͗ͣ͌ͧͩ́͆ͮ͆̚͡z̶̢̨̫̰̗̱͚̮̳̐̍ͭ̄̍̈̿̍͆ͥ͛ͤ̒̑͑͋ͣ̒͛ͧͫ͘̚͟͠á̡̫͈̪̲͓͚͇̪͇͎̈̂ͣ̇͒ͫ̿̊̾͊ͬ͗͡.̷̢̛̥͓̦̪̜͇̞̠͉̤̝̹̤̘̹͌ͯ̇ͦ̇ͩ̒̓ͮ̓̓̄͌̏̐̃̚͘͘̕͜͠͝",
+                        new View.OnClickListener() {
+                            @Override
+                            public void onClick(View v) {
+                                Intent intent = new Intent(NewsPanelActivity.this, TheEndNewActivity.class);
+                                startActivity(intent);
+                            }
+                        });
+                anchor.set(id2);
+
+                // Mostrar notificación con solo el título
+                showNotificationWithTitle("Nuevo aviso del bosque de Alfaguara");
+            }
+        });
+        // Programar aparición única de la segunda noticia a los 5 segundos (prueba)
+        newsTimerController.startOneShot(10_000L);
+
+
     }
 
-    /**
-     * Comprueba si en la lista persistente existe ya una noticia con el título indicado.
-     */
-    private boolean containsNewsWithTitle(String title) {
-        if (title == null) return false;
-        SharedPreferences prefs = getSharedPreferences(PREFS, MODE_PRIVATE);
-        String listStr = prefs.getString(PREF_NEWS_LIST, "[]");
-        try {
-            JSONArray arr = new JSONArray(listStr);
-            for (int i = 0; i < arr.length(); i++) {
-                JSONObject o = arr.getJSONObject(i);
-                if (title.equals(o.optString("title", ""))) return true;
-            }
-        } catch (JSONException ignored) {}
-        return false;
-    }
+
 
     @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
@@ -351,17 +419,9 @@ public class NewsPanelActivity extends AppCompatActivity {
     }
 
     @Override
-    protected void onSaveInstanceState(Bundle outState) {
-        super.onSaveInstanceState(outState);
-        // Guardar el anchor actual (id del último card añadido) para restaurarlo si la Activity se recrea
-        outState.putInt(KEY_ANCHOR, anchor.get());
-        Log.d(TAG, "onSaveInstanceState: guardado anchor=" + anchor.get());
-    }
-
-    @Override
     protected void onDestroy() {
         super.onDestroy();
-        // Cancelar timer para evitar callbacks cuando la Activity ya no exista
+        // Cancelar timer para evitar callbacks cuando la Activity ya no existe
         if (newsTimerController != null) {
             newsTimerController.stop();
             newsTimerController = null;
@@ -377,8 +437,6 @@ public class NewsPanelActivity extends AppCompatActivity {
     /**
      * Crea una tarjeta de noticia, la añade al ConstraintLayout 'main' y la ancla debajo de 'anchorViewId'.
      * Devuelve el id del CardView creado (útil para encadenar tarjetas sin solapamiento).
-     *
-     * Nota: no registra automáticamente como "dynamic"; loadSavedNews() usa addNewsCard y luego añade a dynamicCardIds.
      */
     public int addNewsCard(ConstraintLayout main, int anchorViewId, String title, String body, View.OnClickListener listener) {
         // CardView
@@ -462,4 +520,5 @@ public class NewsPanelActivity extends AppCompatActivity {
 
         return cardId;
     }
+
 }

@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/scrollView"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true"
+    android:background="@android:color/transparent">
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/main"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingTop="8dp"
+        android:paddingBottom="16dp"
+        android:paddingStart="8dp"
+        android:paddingEnd="8dp">
+
+        <!-- Botón home (mantengo tu id existente) -->
+        <Button
+            android:id="@+id/homebutton"
+            android:layout_width="56dp"
+            android:layout_height="56dp"
+            android:background="@drawable/homebutton"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            android:layout_marginTop="12dp"
+            android:layout_marginEnd="12dp" />
+
+        <!-- Logo (mantengo tu id existente) -->
+        <ImageView
+            android:id="@+id/imageView3"
+            android:layout_width="88dp"
+            android:layout_height="84dp"
+            app:srcCompat="@drawable/logo"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            android:layout_marginStart="12dp"
+            android:layout_marginTop="12dp" />
+
+        <!-- Tarjeta principal de noticia -->
+        <androidx.cardview.widget.CardView
+            android:id="@+id/news_card"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            app:cardCornerRadius="14dp"
+            app:cardElevation="6dp"
+            app:cardUseCompatPadding="true"
+            app:layout_constraintTop_toBottomOf="@+id/imageView3"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            android:layout_marginTop="16dp"
+            android:layout_marginStart="12dp"
+            android:layout_marginEnd="12dp"
+            android:background="@android:color/white">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <!-- Título (verde, en negrita, centrado y multilinea) -->
+                <TextView
+                    android:id="@+id/news_title"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Han avistado sombras supuestamente de personas deformes en el bosque de alfaguara"
+                    android:textColor="#017F39"
+                    android:textStyle="bold"
+                    android:textSize="20sp"
+                    android:lineSpacingExtra="2dp"
+                    android:gravity="center"
+                    android:layout_marginBottom="10dp" />
+
+                <!-- Cuerpo de la noticia (negro, normal) -->
+                <TextView
+                    android:id="@+id/news_body"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="En las últimas horas, varios residentes de las zonas cercanas al bosque de Alfaguara aseguran haber visto figuras humanas deformes moviéndose entre los árboles al anochecer. Ante la creciente alarma, las autoridades han emitido un comunicado en el que piden “mantener la serenidad” y evitan confirmar cualquier tipo de anomalía, atribuyendo los hechos a “ilusiones ópticas y rumores infundados”.
+                    A pesar de ello, los habitantes insisten en que las sombras no son producto de la imaginación. Algunos afirman haber escuchado pasos y susurros provenientes del interior del bosque, mientras se reporta un incremento discreto de la presencia policial en los caminos de acceso. El ambiente es de tensión, y aunque el gobierno insiste en que todo está bajo control, nadie parece convencido de que sea así."
+                    android:textColor="#000000"
+                    android:textSize="14sp"
+                    android:lineSpacingExtra="2dp"
+                    android:layout_marginBottom="12dp" />
+
+                <!-- Imagen de la noticia -->
+                <ImageView
+                    android:id="@+id/news_image"
+                    android:layout_width="match_parent"
+                    android:layout_height="180dp"
+                    android:adjustViewBounds="true"
+                    android:scaleType="centerCrop"
+                    android:src="@drawable/forest"
+                    tools:srcCompat="@drawable/forest" />
+
+            </LinearLayout>
+        </androidx.cardview.widget.CardView>
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+</ScrollView>
