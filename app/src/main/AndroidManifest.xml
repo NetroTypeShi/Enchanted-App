@@ -1,8 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools">
-    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    xmlns:tools="http://schemas.android.com/tools"
+    package="com.example.alertaciudadana">
+
+    <!-- Permisos necesarios -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
     <application
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
@@ -13,34 +18,39 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.AlertaCiudadana">
 
-        <service
-            android:name=".Controller.NewsService"
+        <!-- BroadcastReceiver que muestra notificaciones cuando llegue la alarma -->
+        <receiver
+            android:name=".Controller.NotificationReceiver"
             android:exported="false" />
 
+        <!-- Reprogramar alarmas tras reinicio -->
+        <receiver
+            android:name=".Controller.BootReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.LOCKED_BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
+
+        <!-- Actividad principal (único launcher) -->
         <activity
             android:name=".Views.LandingActivity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
 
+        <!-- Otras activities -->
         <activity
             android:name=".Views.NewsPanelActivity"
             android:exported="false" />
 
         <activity
             android:name=".Views.FirstNewActivity"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity>
+            android:exported="false" />
 
     </application>
-
 </manifest>

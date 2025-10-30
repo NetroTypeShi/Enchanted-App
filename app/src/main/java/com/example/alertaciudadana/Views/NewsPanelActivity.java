@@ -17,7 +17,7 @@ import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
-
+import com.example.alertaciudadana.Controller.NotificationController;
 import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.cardview.widget.CardView;
@@ -33,26 +33,34 @@ import androidx.core.view.WindowInsetsCompat;
 
 import com.example.alertaciudadana.R;
 import com.example.alertaciudadana.Controller.NewsTimerController;
+import com.example.alertaciudadana.Controller.NotificationReceiver;
 
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * Cambios principales:
- * - Solo añadimos la tarjeta inicial y programamos el timer si savedInstanceState == null.
- * - Guardamos/restauramos el anchor en onSaveInstanceState para evitar que al recrear la Activity
- *   se pierda la referencia a la última tarjeta añadida.
- * - onResume comprueba SharedPreferences para cualquier noticia pendiente (si usas Service/Worker).
+ * NewsPanelActivity modificado para persistir y restaurar noticias desde SharedPreferences (news_list).
  */
 public class NewsPanelActivity extends AppCompatActivity {
 
     private static final String TAG = "NewsPanelActivity";
     private static final String KEY_ANCHOR = "key_anchor";
+    private static final String PREFS = NotificationReceiver.PREFS;
+    private static final String PREF_NEWS_LIST = NotificationReceiver.PREF_NEWS_LIST;
 
     // Controller externo para programar la aparición de la segunda noticia
     private NewsTimerController newsTimerController;
 
     // Anchor shared to chain added cards (starts pointing to textView3)
     private final AtomicInteger anchor = new AtomicInteger(R.id.textView3);
+
+    // ids de cards añadidos dinámicamente (para poder reconstruir / limpiar)
+    private final List<Integer> dynamicCardIds = new ArrayList<>();
 
     private static final String CHANNEL_ID = "news_channel_id";
     private static final int REQ_POST_NOTIF = 1001;
@@ -140,25 +148,34 @@ public class NewsPanelActivity extends AppCompatActivity {
 
         ConstraintLayout main = findViewById(R.id.main);
 
+        // Cargar noticias guardadas anteriormente (si las hay) antes de añadir la noticia estática
+        loadSavedNews(main);
+
         // Solo la primera vez (savedInstanceState == null) añadimos la tarjeta inicial y programamos el timer.
         // Si la Activity se recrea (p. ej. rotación) o volvemos desde otra Activity, evitamos duplicados.
         if (savedInstanceState == null) {
             // ancla inicial: debajo de textView3 (tal y como está en tu XML)
             anchor.set(R.id.textView3);
 
-            // Primera tarjeta: actualizamos 'anchor' con el id del card creado
-            int createdId = addNewsCard(main, anchor.get(),
-                    "El ayuntamiento de Alfacar detecta sonidos y acontecimientos extraños en el bosque de Alfaguara",
-                    "Los cazadores y senderistas han avistado sonidos de animales desconocidos en el bosque y proximidades, los testigos a pesar de buscar, no han encontrado la fuente de los sonidos",
-                    new View.OnClickListener() {
-                        @Override
-                        public void onClick(View v) {
-                            // acción del botón "Detalles" - abrimos FirstNewActivity
-                            Intent intent = new Intent(NewsPanelActivity.this, FirstNewActivity.class);
-                            startActivity(intent);
-                        }
-                    });
-            anchor.set(createdId);
+            // Añadir la tarjeta inicial solo si no está ya en la lista persistente (evita duplicados)
+            String initialTitle = "El ayuntamiento de Alfacar detecta sonidos y acontecimientos extraños en el bosque de Alfaguara";
+            if (!containsNewsWithTitle(initialTitle)) {
+                int createdId = addNewsCard(main, anchor.get(),
+                        initialTitle,
+                        "Los cazadores y senderistas han avistado sonidos de animales desconocidos en el bosque y proximidades, los testigos a pesar de buscar, no han encontrado la fuente de los sonidos",
+                        new View.OnClickListener() {
+                            @Override
+                            public void onClick(View v) {
+                                // acción del botón "Detalles" - abrimos FirstNewActivity
+                                Intent intent = new Intent(NewsPanelActivity.this, FirstNewActivity.class);
+                                startActivity(intent);
+                            }
+                        });
+                anchor.set(createdId);
+            } else {
+                // si ya existía, actualizamos anchor al último elemento cargado por loadSavedNews
+                // (loadSavedNews actualiza anchor con el último id añadido)
+            }
 
             // Inicializar el controller con un listener sencillo: al tick añadimos la segunda noticia
             newsTimerController = new NewsTimerController(new NewsTimerController.Listener() {
@@ -167,24 +184,31 @@ public class NewsPanelActivity extends AppCompatActivity {
                     Log.d(TAG, "onTick() recibido en Activity");
                     runOnUiThread(() -> Toast.makeText(NewsPanelActivity.this, "onTick ejecutado (prueba)", Toast.LENGTH_SHORT).show());
 
-                    int id2 = addNewsCard(main, anchor.get(),
-                            "Mepicanlococo",
-                            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-                            new View.OnClickListener() {
-                                @Override
-                                public void onClick(View v) {
-                                    // acción del botón "Detalles" para la segunda noticia
-                                }
-                            });
+                    String title = "Mepicanlococo";
+                    String body = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+
+                    int id2 = addNewsCard(main, anchor.get(), title, body, new View.OnClickListener() {
+                        @Override
+                        public void onClick(View v) {
+                            // acción del botón "Detalles" para la segunda noticia
+                            Intent i = new Intent(NewsPanelActivity.this, FirstNewActivity.class);
+                            startActivity(i);
+                        }
+                    });
                     anchor.set(id2);
 
-                    // Mostrar notificación con solo el título
-                    showNotificationWithTitle("Mepicanlococo");
+                    // Persistir en la lista para que sobreviva al cierre
+                    NotificationReceiver.appendNewsToStorage(NewsPanelActivity.this, title, body, "FirstNewActivity");
+
+                    // Mostrar notificación con solo el título (si se concede permiso)
+                    showNotificationWithTitle(title);
                 }
             });
 
             // Programar aparición única de la segunda noticia a los 5 segundos (prueba)
             newsTimerController.startOneShot(5_000L);
+            // También programamos el broadcast para que la notificación se lance aunque la app esté cerrada
+            NotificationController.scheduleOneShot(this, 5_000L, "Mepicanlococo", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "FirstNewActivity");
             Log.d(TAG, "Timer programado (5s)");
 
             newsTimerController = new NewsTimerController(new NewsTimerController.Listener() {
@@ -193,24 +217,31 @@ public class NewsPanelActivity extends AppCompatActivity {
                     Log.d(TAG, "onTick() recibido en Activity");
                     runOnUiThread(() -> Toast.makeText(NewsPanelActivity.this, "onTick ejecutado (prueba)", Toast.LENGTH_SHORT).show());
 
-                    int id2 = addNewsCard(main, anchor.get(),
-                            "Noticia3",
-                            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-                            new View.OnClickListener() {
-                                @Override
-                                public void onClick(View v) {
-                                    // acción del botón "Detalles" para la segunda noticia
-                                }
-                            });
+                    String title = "Noticia3";
+                    String body = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+
+                    int id2 = addNewsCard(main, anchor.get(), title, body, new View.OnClickListener() {
+                        @Override
+                        public void onClick(View v) {
+                            // acción del botón "Detalles" para la tercera noticia
+                            Intent i = new Intent(NewsPanelActivity.this, FirstNewActivity.class);
+                            startActivity(i);
+                        }
+                    });
                     anchor.set(id2);
 
-                    // Mostrar notificación con solo el título
+                    // Persistir
+                    NotificationReceiver.appendNewsToStorage(NewsPanelActivity.this, title, body, "FirstNewActivity");
+
+                    // Mostrar notificación
                     showNotificationWithTitle("Nueva noticia");
                 }
             });
 
-            // Programar aparición única de la segunda noticia a los 5 segundos (prueba)
+            // Programar aparición única de la tercera noticia a los 10 segundos (prueba)
             newsTimerController.startOneShot(10_000L);
+            // También programamos el broadcast para que la notificación se lance aunque la app esté cerrada
+            NotificationController.scheduleOneShot(this, 10_000L, "Nueva noticia", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "FirstNewActivity");
         } else {
             // Si savedInstanceState != null no reprogramamos timer; aseguramos que el controller no arranque doble.
             if (newsTimerController == null) {
@@ -224,22 +255,85 @@ public class NewsPanelActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
 
-        // Si usas Service/Worker que dejó una noticia pendiente, añádela aquí.
-        SharedPreferences prefs = getSharedPreferences("news_prefs", MODE_PRIVATE);
-        String pendingTitle = prefs.getString("pending_title", null);
-        if (pendingTitle != null) {
-            prefs.edit().remove("pending_title").apply();
-            ConstraintLayout main = findViewById(R.id.main);
-            int id = addNewsCard(main, anchor.get(), pendingTitle, "", new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    // acción detalles
-                }
-            });
-            anchor.set(id);
-            Toast.makeText(this, "Se añadió noticia pendiente: " + pendingTitle, Toast.LENGTH_SHORT).show();
-            Log.d(TAG, "Se añadió noticia pendiente a la UI: " + pendingTitle);
+        // Al reanudar, refrescamos la UI con la lista persistente (si hubo nuevas entradas mientras la app estaba cerrada)
+        ConstraintLayout main = findViewById(R.id.main);
+        loadSavedNews(main);
+    }
+
+    /**
+     * Carga news_list desde SharedPreferences y reconstruye las tarjetas dinámicas.
+     * Limpia previamente las tarjetas dinámicas mostradas.
+     */
+    private void loadSavedNews(ConstraintLayout main) {
+        // Limpiar tarjetas dinámicas existentes
+        for (Integer id : new ArrayList<>(dynamicCardIds)) {
+            View v = findViewById(id);
+            if (v != null) {
+                main.removeView(v);
+            }
         }
+        dynamicCardIds.clear();
+        // Reset anchor to initial textView3 so cards append below it
+        anchor.set(R.id.textView3);
+
+        SharedPreferences prefs = getSharedPreferences(PREFS, MODE_PRIVATE);
+        String listStr = prefs.getString(PREF_NEWS_LIST, "[]");
+        try {
+            JSONArray arr = new JSONArray(listStr);
+            for (int i = 0; i < arr.length(); i++) {
+                JSONObject o = arr.getJSONObject(i);
+                final String t = o.optString("title", "");
+                final String b = o.optString("body", "");
+                final String target = o.optString("target", null);
+
+                // listener que abre la activity target (si coincide)
+                View.OnClickListener detailsListener = new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        try {
+                            if ("FirstNewActivity".equals(target)) {
+                                Intent i = new Intent(NewsPanelActivity.this, FirstNewActivity.class);
+                                startActivity(i);
+                            } else {
+                                // por defecto abrimos FirstNewActivity
+                                Intent i = new Intent(NewsPanelActivity.this, FirstNewActivity.class);
+                                startActivity(i);
+                            }
+                        } catch (Exception e) {
+                            Toast.makeText(NewsPanelActivity.this, "Acción no disponible", Toast.LENGTH_SHORT).show();
+                            Log.e(TAG, "Error al ejecutar detalle target=" + target, e);
+                        }
+                    }
+                };
+
+                int id = addNewsCard(main, anchor.get(), t, b != null ? b : "", detailsListener);
+                // registrar como dinámica
+                dynamicCardIds.add(id);
+                anchor.set(id);
+            }
+            Log.d(TAG, "loadSavedNews: loaded " + arr.length() + " items");
+        } catch (JSONException je) {
+            Log.e(TAG, "loadSavedNews JSON error: " + je.getMessage(), je);
+        } catch (Exception e) {
+            Log.e(TAG, "loadSavedNews error: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Comprueba si en la lista persistente existe ya una noticia con el título indicado.
+     */
+    private boolean containsNewsWithTitle(String title) {
+        if (title == null) return false;
+        SharedPreferences prefs = getSharedPreferences(PREFS, MODE_PRIVATE);
+        String listStr = prefs.getString(PREF_NEWS_LIST, "[]");
+        try {
+            JSONArray arr = new JSONArray(listStr);
+            for (int i = 0; i < arr.length(); i++) {
+                JSONObject o = arr.getJSONObject(i);
+                if (title.equals(o.optString("title", ""))) return true;
+            }
+        } catch (JSONException ignored) {}
+        return false;
     }
 
     @Override
@@ -283,6 +377,8 @@ public class NewsPanelActivity extends AppCompatActivity {
     /**
      * Crea una tarjeta de noticia, la añade al ConstraintLayout 'main' y la ancla debajo de 'anchorViewId'.
      * Devuelve el id del CardView creado (útil para encadenar tarjetas sin solapamiento).
+     *
+     * Nota: no registra automáticamente como "dynamic"; loadSavedNews() usa addNewsCard y luego añade a dynamicCardIds.
      */
     public int addNewsCard(ConstraintLayout main, int anchorViewId, String title, String body, View.OnClickListener listener) {
         // CardView
@@ -366,5 +462,4 @@ public class NewsPanelActivity extends AppCompatActivity {
 
         return cardId;
     }
-
 }
